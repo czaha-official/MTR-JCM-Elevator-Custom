@@ -30,6 +30,7 @@ public final class LiftMediaRuntime {
     private final Identifier upArrow;
     private final Identifier downArrow;
     private final Identifier floorFont;
+    private final boolean hasChimeSettings;
     private final SoundEvent upChime;
     private final SoundEvent downChime;
     private volatile FloorGlyph cachedFloor;
@@ -46,6 +47,7 @@ public final class LiftMediaRuntime {
         downArrow = parseTexture(settings.getOrDefault("arrow_down",
                 settings.getOrDefault("yte_down", DEFAULT_DOWN_ARROW)));
         floorFont = customFont ? new Identifier("mtr_jcm_ev", "lift_" + id) : null;
+        hasChimeSettings = settings.containsKey("chime_up") || settings.containsKey("chime_down");
         upChime = parseSound(settings.getOrDefault("chime_up", DEFAULT_UP_CHIME));
         downChime = parseSound(settings.getOrDefault("chime_down", DEFAULT_DOWN_CHIME));
     }
@@ -68,6 +70,10 @@ public final class LiftMediaRuntime {
 
     public Identifier downArrow() {
         return downArrow;
+    }
+
+    public boolean hasChimeSettings() {
+        return hasChimeSettings;
     }
 
     public SoundEvent upChime() {
@@ -111,7 +117,7 @@ public final class LiftMediaRuntime {
     private static SoundEvent parseSound(String id) {
         if (id == null) return null;
         ResourceLocation location = ResourceLocation.tryParse(id);
-        return location == null ? null : SoundEvent.createVariableRangeEvent(location);
+        return location == null ? null : SoundEvent.createFixedRangeEvent(location, 32f);
     }
 
     public record FloorGlyph(String value, OrderedText text, int width) { }
