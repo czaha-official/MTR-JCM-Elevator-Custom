@@ -11,6 +11,6 @@ public final class MtrJcmEvForge {
 
     public MtrJcmEvForge() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                MinecraftForge.EVENT_BUS.register(new LiftArrivalSoundController()));
+                MinecraftForge.EVENT_BUS.register(new ClientSettingsBootstrap()));
     }
 }
