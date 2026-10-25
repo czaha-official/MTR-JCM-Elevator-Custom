@@ -65,7 +65,7 @@ public final class ElevatorMediaStore {
     public static synchronized boolean hasChimeSettings(String liftId) {
         load();
         Map<String, String> values = DATA.get(liftId);
-        return values != null && (values.containsKey("chime_up") || values.containsKey("chime_down"));
+        return values != null && values.keySet().stream().anyMatch(key -> !"media_revision".equals(key));
     }
 
     public static synchronized String getLastError() {
