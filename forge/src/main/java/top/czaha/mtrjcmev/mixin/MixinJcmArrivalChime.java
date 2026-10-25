@@ -88,12 +88,16 @@ public abstract class MixinJcmArrivalChime {
         if (selected == null || !selected.hasChimeSettings()) return;
 
         SoundEvent sound = history.lastDirection == LiftDirection.DOWN
-                ? selected.downChime() : selected.upChime();
-        if (sound == null || mc.getSoundManager().getSoundEvent(sound.getLocation()) == null) {
+                ? selected.downChime()
+                : history.lastDirection == LiftDirection.UP ? selected.upChime() : null;
+        // Only replace directions explicitly selected by the user. A null or
+        // unknown direction leaves JCM\u0027s original arrival chime intact.
+        if (sound == null) return;
+        if (mc.getSoundManager().getSoundEvent(sound.getLocation()) == null) {
             // The configured sound cannot resolve; let JCM play its normal
             // chime rather than silently disabling the arrival sound.
             MTR_JCM_EV_LOGGER.warn("Lift {} selected sound {} is not loaded. Enable/reload the media pack or YTE.",
-                    liftId, sound == null ? "<invalid>" : sound.getLocation());
+                    liftId, sound.getLocation());
             return;
         }
 
@@ -124,7 +128,7 @@ public abstract class MixinJcmArrivalChime {
     @Unique
     private static final class TravelState {
         private long lastFloorY;
-        private LiftDirection lastDirection = LiftDirection.UP;
+        private LiftDirection lastDirection = LiftDirection.NONE;
         private long lastSeenCall;
 
         private TravelState(long firstFloor) {
