@@ -27,6 +27,34 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Build distributable Forge mod
         run: bash ./gradlew --no-daemon :forge:build --stacktrace
+      - name: Verify compiled mod metadata and Mixin classes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import json
+
+          jars = list(Path("build/release").glob("*.jar"))
+          assert len(jars) == 1, f"Expected exactly one distributable Forge JAR: {jars}"
+          with ZipFile(jars[0]) as jar:
+              entries = set(jar.namelist())
+              required = {
+                  "META-INF/mods.toml",
+                  "META-INF/MANIFEST.MF",
+                  "mtr_jcm_ev.mixins.json",
+                  "top/czaha/mtrjcmev/LiftTravelState.class",
+                  "top/czaha/mtrjcmev/LiftMediaRuntime.class",
+                  "top/czaha/mtrjcmev/mixin/MixinJcmArrivalChime.class",
+                  "top/czaha/mtrjcmev/mixin/MixinRenderLiftDisplay.class",
+              }
+              assert required.issubset(entries), sorted(required - entries)
+              mixins = json.loads(jar.read("mtr_jcm_ev.mixins.json"))
+              assert {"MixinJcmArrivalChime", "MixinRenderLiftDisplay"}.issubset(mixins["client"])
+              metadata = jar.read("META-INF/mods.toml").decode("utf-8")
+              assert 'modId="jsblock"' in metadata
+              assert "MixinConfigs: mtr_jcm_ev.mixins.json" in jar.read("META-INF/MANIFEST.MF").decode("utf-8")
+          print("Forge mod packaging smoke test passed:", jars[0])
+          PY
       - name: Upload compiled mod
         uses: actions/upload-artifact@v4
         with:
