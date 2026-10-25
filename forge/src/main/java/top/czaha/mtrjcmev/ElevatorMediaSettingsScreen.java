@@ -220,8 +220,25 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> ElevatorMediaStore.choose(liftId, "chime_down")));
         addRenderableWidget(control("Reset DOWN to YTE", 1, 72, false,
                 button -> setDefaultChime("chime_down", DEFAULT_DOWN_CHIME)));
-        addRenderableWidget(control("Apply media pack / reload", 0, 97, true,
-                button -> applyPack()));
+        if (height >= 255) {
+            addRenderableWidget(control("Test selected UP", 0, 97, false,
+                    button -> previewChime(true)));
+            addRenderableWidget(control("Test selected DOWN", 1, 97, false,
+                    button -> previewChime(false)));
+            addRenderableWidget(control("Apply media pack / reload", 0, 122, true,
+                    button -> applyPack()));
+        } else {
+            addRenderableWidget(control("Apply media pack / reload", 0, 97, true,
+                    button -> applyPack()));
+        }
+    }
+
+    private void previewChime(boolean up) {
+        String error = ElevatorMediaStore.previewChime(liftId, up);
+        applyFailed = error != null;
+        statusMessage = error == null
+                ? (up ? "Playing selected UP chime." : "Playing selected DOWN chime.")
+                : error;
     }
 
     private void applyPack() {
