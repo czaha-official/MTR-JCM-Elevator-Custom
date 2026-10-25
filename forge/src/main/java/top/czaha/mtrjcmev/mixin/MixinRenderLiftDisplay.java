@@ -45,6 +45,18 @@ public abstract class MixinRenderLiftDisplay {
     private static final ThreadLocal<Suppression> PRE_RENDERED = new ThreadLocal<>();
     private static boolean loggedOverlay;
 
+    /**
+     * JCM can cancel the render lambda before the vanilla in-cab display call.
+     * Never carry a suppression marker into another lift or frame.
+     */
+    @Inject(method = "lambda$render$6", at = @At("HEAD"), require = 0, remap = false)
+    private static void mtrJcmEv$beginLift(boolean isHoldingRefresher, ClientWorld clientWorld,
+            ObjectArrayList cullingTasks, Vec3d camera, Vector3d cameraShakeOffset, boolean canRide,
+            ClientPlayerEntity player, long millisElapsed, MinecraftClientData.LiftWrapper wrapper,
+            CallbackInfo ci) {
+        PRE_RENDERED.remove();
+    }
+
     @Inject(method = "lambda$render$6", at = @At(value = "INVOKE", target =
             "Lorg/mtr/mod/model/ModelLift1;render(Lorg/mtr/mod/render/StoredMatrixTransformations;Lorg/mtr/core/data/NameColorDataBase;Lorg/mtr/mapping/holder/Identifier;IFFZIIZZZZZ)V"),
             locals = LocalCapture.CAPTURE_FAILSOFT, require = 0, remap = false)
@@ -88,7 +100,8 @@ public abstract class MixinRenderLiftDisplay {
     private static void mtrJcmEv$renderConfiguredDisplay(StoredMatrixTransformations matrices,
                                                           World world, Lift lift, float width, float height,
                                                           CallbackInfo ci) {
-        if (lift == null || lift.getCurrentFloor() == null || width <= 0 || height <= 0) return;
+        if (lift == null || lift.getCurrentFloor() == null || width <= 0 || height <= 0
+                || OptimizedRenderer.renderingShadows()) return;
         LiftMediaRuntime media = ElevatorMediaStore.runtimeFor(lift.getId());
         if (media == null || !media.hasVisualSettings()) return;
 
