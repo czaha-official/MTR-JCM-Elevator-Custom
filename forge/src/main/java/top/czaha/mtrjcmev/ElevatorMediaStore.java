@@ -240,7 +240,6 @@ public final class ElevatorMediaStore {
     private static void writeConfig(Path gameDir) throws IOException {
         Path config = gameDir.resolve("config/mtr_jcm_elevator_media.json");
         Path pack = gameDir.resolve("resourcepacks").resolve(PACK_NAME);
-        atomicWrite(config, GSON.toJson(DATA));
         atomicWrite(pack.resolve("pack.mcmeta"),
                 "{\"pack\":{\"pack_format\":15,\"description\":\"MTR JCM Elevator Custom media\"}}");
         atomicWrite(pack.resolve("assets/mtr/js/mtr_jcm_ev/media_config.js"),
@@ -254,6 +253,8 @@ public final class ElevatorMediaStore {
             addSound(sounds, liftId, entry.getValue(), "chime_down", "down");
         }
         atomicWrite(pack.resolve("assets/mtr_jcm_ev/sounds.json"), GSON.toJson(sounds));
+        // Save the authoritative configuration last so failed pack writes do not commit settings.
+        atomicWrite(config, GSON.toJson(DATA));
     }
 
     private static void atomicWrite(Path destination, String contents) throws IOException {
