@@ -29,6 +29,7 @@ final class MediaFileSelectionScreen extends Screen {
         pathField = new EditBox(font, centerX - fieldWidth / 2, height / 2 - 5, fieldWidth, 20,
                 Component.literal("File path"));
         pathField.setMaxLength(1024);
+        pathField.setResponder(value -> errorMessage = null);
         addRenderableWidget(pathField);
         addRenderableWidget(Button.builder(Component.literal("Load"), button -> loadFile())
                 .bounds(centerX - 100, height / 2 + 30, 95, 20).build());
