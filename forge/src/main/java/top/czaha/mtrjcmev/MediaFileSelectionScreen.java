@@ -25,8 +25,11 @@ final class MediaFileSelectionScreen extends Screen {
     @Override
     protected void init() {
         int centerX = width / 2;
-        pathField = new EditBox(font, centerX - 150, height / 2 - 5, 300, 20, Component.literal("File path"));
+        int fieldWidth = Math.max(1, Math.min(300, width - 24));
+        pathField = new EditBox(font, centerX - fieldWidth / 2, height / 2 - 5, fieldWidth, 20,
+                Component.literal("File path"));
         pathField.setMaxLength(1024);
+        pathField.setResponder(value -> errorMessage = null);
         addRenderableWidget(pathField);
         addRenderableWidget(Button.builder(Component.literal("Load"), button -> loadFile())
                 .bounds(centerX - 100, height / 2 + 30, 95, 20).build());
@@ -38,11 +41,14 @@ final class MediaFileSelectionScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        graphics.drawCenteredString(font, Component.literal("Paste the full path to a " + extensionDescription() + " file"),
+        String prompt = "Paste the full path to a " + extensionDescription() + " file";
+        graphics.drawCenteredString(font, Component.literal(font.plainSubstrByWidth(prompt, Math.max(20, width - 16))),
                 width / 2, height / 2 - 35, 0xFFFFFF);
         super.render(graphics, mouseX, mouseY, partialTick);
         if (errorMessage != null) {
-            graphics.drawCenteredString(font, Component.literal(errorMessage), width / 2, height / 2 + 65, 0xFF5555);
+            graphics.drawCenteredString(font,
+                    Component.literal(font.plainSubstrByWidth(errorMessage, Math.max(20, width - 16))),
+                    width / 2, height / 2 + 65, 0xFF5555);
         }
     }
 
@@ -55,6 +61,10 @@ final class MediaFileSelectionScreen extends Screen {
         String value = pathField.getValue().trim();
         if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
             value = value.substring(1, value.length() - 1);
+        }
+        if (value.isBlank()) {
+            errorMessage = "Enter a file path first.";
+            return;
         }
         try {
             String error = ElevatorMediaStore.save(liftId, key, Path.of(value));

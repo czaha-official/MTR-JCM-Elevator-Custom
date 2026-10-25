@@ -85,26 +85,40 @@ final class ElevatorMediaSettingsScreen extends Screen {
         this.tab = tab;
     }
 
+    private String statusMessage;
+    private boolean applyFailed;
+
     @Override
     protected void init() {
-        int centerX = width / 2;
-        addRenderableWidget(tabButton(centerX - 154, "Arrows", 0));
-        addRenderableWidget(tabButton(centerX - 52, "Numbers", 1));
-        addRenderableWidget(tabButton(centerX + 50, "Chimes", 2));
+        int panel = panelWidth();
+        int tabWidth = (panel - 8) / 3;
+        int left = (width - panel) / 2;
+        addRenderableWidget(tabButton(left, tabWidth, "Arrows", 0));
+        addRenderableWidget(tabButton(left + tabWidth + 4, tabWidth, "Numbers", 1));
+        addRenderableWidget(tabButton(left + (tabWidth + 4) * 2, panel - (tabWidth + 4) * 2,
+                "Chimes", 2));
 
-        if (tab == 0) addArrowTab(centerX);
-        else if (tab == 1) addNumberTab(centerX);
-        else addChimeTab(centerX);
+        if (tab == 0) addArrowTab();
+        else if (tab == 1) addNumberTab();
+        else addChimeTab();
 
-        addRenderableWidget(Button.builder(Component.literal("Done"), button -> minecraft.setScreen(parent))
-                .bounds(centerX - 50, height - 35, 100, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
+                .bounds(Math.max(0, width / 2 - 50), Math.max(0, height - 24),
+                        Math.min(100, width), 20).build());
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
-        graphics.drawCenteredString(font, Component.literal("Lift ID: " + liftId), width / 2, 64, 0xAAAAAA);
+        String error = ElevatorMediaStore.getLastError();
+        String heading = error != null ? error : statusMessage != null ? statusMessage : title.getString();
+        graphics.drawCenteredString(font, Component.literal(font.plainSubstrByWidth(heading, Math.max(20, width - 16))),
+                width / 2, 12, error != null || applyFailed ? 0xFF5555 : 0xFFFFFF);
+        if (height >= 255) {
+            String id = "Lift ID: " + liftId;
+            graphics.drawCenteredString(font, Component.literal(font.plainSubstrByWidth(id, Math.max(20, width - 16))),
+                    width / 2, 57, 0xAAAAAA);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
@@ -113,79 +127,112 @@ final class ElevatorMediaSettingsScreen extends Screen {
         minecraft.setScreen(parent);
     }
 
-    private Button tabButton(int x, String label, int targetTab) {
-        return Button.builder(Component.literal(label), button ->
-                        minecraft.setScreen(new ElevatorMediaSettingsScreen(parent, liftId, targetTab)))
-                .bounds(x, 38, 96, 20).build();
+    private int panelWidth() {
+        return Math.max(1, Math.min(310, width - 12));
     }
 
-    private void addArrowTab(int centerX) {
+    private int contentTop() {
+        return Math.max(54, Math.min(78, height - 147));
+    }
+
+    private Button tabButton(int x, int buttonWidth, String label, int targetTab) {
+        Button button = Button.builder(Component.literal(label), pressed ->
+                        minecraft.setScreen(new ElevatorMediaSettingsScreen(parent, liftId, targetTab)))
+                .bounds(x, 32, buttonWidth, 20).build();
+        button.active = targetTab != tab;
+        return button;
+    }
+
+    private Button control(String label, int column, int yOffset, boolean fullWidth, Button.OnPress onPress) {
+        int panel = panelWidth();
+        int left = (width - panel) / 2;
+        int half = (panel - 6) / 2;
+        int x = fullWidth ? left : left + column * (half + 6);
+        int buttonWidth = fullWidth ? panel : column == 0 ? half : panel - half - 6;
+        int controlY = height < 200 ? yOffset * 4 / 5 : yOffset;
+        int controlHeight = height < 200 ? 16 : 20;
+        return Button.builder(Component.literal(label), onPress)
+                .bounds(x, contentTop() + controlY, buttonWidth, controlHeight).build();
+    }
+
+    private void addArrowTab() {
         String up = valueOrDefault("yte_up", DEFAULT_UP_ARROW);
         String down = valueOrDefault("yte_down", DEFAULT_DOWN_ARROW);
         String customUp = ElevatorMediaStore.get(liftId, "arrow_up");
         String customDown = ElevatorMediaStore.get(liftId, "arrow_down");
-        addRenderableWidget(Button.builder(Component.literal("YTE up: " + shortName(up)), button -> cycleArrow("yte_up", up, -1))
-                .bounds(centerX - 155, 100, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Next up: " + shortName(up)), button -> cycleArrow("yte_up", up, 1))
-                .bounds(centerX + 5, 100, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use custom UP PNG" + customStatus(customUp)), button -> ElevatorMediaStore.choose(liftId, "arrow_up"))
-                .bounds(centerX - 155, 128, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use YTE UP arrow"), button -> clear("arrow_up"))
-                .bounds(centerX + 5, 128, 150, 20).build());
 
-        addRenderableWidget(Button.builder(Component.literal("YTE down: " + shortName(down)), button -> cycleArrow("yte_down", down, -1))
-                .bounds(centerX - 155, 174, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Next down: " + shortName(down)), button -> cycleArrow("yte_down", down, 1))
-                .bounds(centerX + 5, 174, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use custom DOWN PNG" + customStatus(customDown)), button -> ElevatorMediaStore.choose(liftId, "arrow_down"))
-                .bounds(centerX - 155, 202, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use YTE DOWN arrow"), button -> clear("arrow_down"))
-                .bounds(centerX + 5, 202, 150, 20).build());
+        addRenderableWidget(control("Previous UP", 0, 0, false,
+                button -> cycleArrow("yte_up", up, -1)));
+        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+                button -> cycleArrow("yte_up", up, 1)));
+        addRenderableWidget(control("Custom UP PNG" + customStatus(customUp), 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
+        addRenderableWidget(control("Use YTE UP arrow", 1, 24, false,
+                button -> clear("arrow_up")));
+
+        addRenderableWidget(control("Previous DOWN", 0, 52, false,
+                button -> cycleArrow("yte_down", down, -1)));
+        addRenderableWidget(control("DOWN: " + shortName(down), 1, 52, false,
+                button -> cycleArrow("yte_down", down, 1)));
+        addRenderableWidget(control("Custom DOWN PNG" + customStatus(customDown), 0, 76, false,
+                button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
+        addRenderableWidget(control("Use YTE DOWN arrow", 1, 76, false,
+                button -> clear("arrow_down")));
+        addRenderableWidget(control("Apply media pack / reload", 0, 101, true,
+                button -> applyPack()));
     }
 
-    private void addNumberTab(int centerX) {
+    private void addNumberTab() {
         String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
         String customFont = ElevatorMediaStore.get(liftId, "font_custom");
         boolean enabled = !"false".equals(ElevatorMediaStore.get(liftId, "floor_enabled"));
-        addRenderableWidget(Button.builder(Component.literal("YTE font: " + shortName(fontId)), button -> cycleFont(fontId))
-                .bounds(centerX - 155, 102, 310, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use custom TTF/OTF" + customStatus(customFont)), button -> ElevatorMediaStore.choose(liftId, "font_custom"))
-                .bounds(centerX - 155, 132, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use selected YTE font"), button -> clear("font_custom"))
-                .bounds(centerX + 5, 132, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Floor number: " + (enabled ? "ON" : "OFF")), button -> {
+        addRenderableWidget(control("YTE font: " + shortName(fontId), 0, 0, true,
+                button -> cycleFont(fontId)));
+        addRenderableWidget(control("Custom TTF/OTF" + customStatus(customFont), 0, 26, false,
+                button -> ElevatorMediaStore.choose(liftId, "font_custom")));
+        addRenderableWidget(control("Use YTE font", 1, 26, false,
+                button -> clear("font_custom")));
+        addRenderableWidget(control("Floor number: " + (enabled ? "ON" : "OFF"), 0, 54, true,
+                button -> {
                     ElevatorMediaStore.set(liftId, "floor_enabled", Boolean.toString(!enabled));
                     reopen(1);
-                })
-                .bounds(centerX - 100, 170, 200, 20).build());
+                }));
+        addRenderableWidget(control("Apply media pack / reload", 0, 82, true,
+                button -> applyPack()));
     }
 
-    private void addChimeTab(int centerX) {
+    private void addChimeTab() {
         String up = valueOrDefault("chime_up", DEFAULT_UP_CHIME);
         String down = valueOrDefault("chime_down", DEFAULT_DOWN_CHIME);
-        addRenderableWidget(Button.builder(Component.literal("UP: " + shortName(up)), button -> cycleChime("chime_up", up, YTE_UP_CHIMES, -1))
-                .bounds(centerX - 155, 100, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Next UP sound"), button -> cycleChime("chime_up", up, YTE_UP_CHIMES, 1))
-                .bounds(centerX + 5, 100, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use custom UP OGG" + customStatus(up)), button -> ElevatorMediaStore.choose(liftId, "chime_up"))
-                .bounds(centerX - 155, 128, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Reset UP to YTE"), button -> setDefaultChime("chime_up", DEFAULT_UP_CHIME))
-                .bounds(centerX + 5, 128, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("DOWN: " + shortName(down)), button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, -1))
-                .bounds(centerX - 155, 166, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Next DOWN sound"), button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, 1))
-                .bounds(centerX + 5, 166, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Use custom DOWN OGG" + customStatus(down)), button -> ElevatorMediaStore.choose(liftId, "chime_down"))
-                .bounds(centerX - 155, 194, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Reset DOWN to YTE"), button -> setDefaultChime("chime_down", DEFAULT_DOWN_CHIME))
-                .bounds(centerX + 5, 194, 150, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Apply custom OGG files (resource reload)"), button -> ElevatorMediaStore.reloadMediaPack())
-                .bounds(centerX - 155, 225, 310, 20).build());
+        addRenderableWidget(control("Previous UP", 0, 0, false,
+                button -> cycleChime("chime_up", up, YTE_UP_CHIMES, -1)));
+        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+                button -> cycleChime("chime_up", up, YTE_UP_CHIMES, 1)));
+        addRenderableWidget(control("Custom UP OGG" + customStatus(up), 0, 23, false,
+                button -> ElevatorMediaStore.choose(liftId, "chime_up")));
+        addRenderableWidget(control("Reset UP to YTE", 1, 23, false,
+                button -> setDefaultChime("chime_up", DEFAULT_UP_CHIME)));
+        addRenderableWidget(control("Previous DOWN", 0, 49, false,
+                button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, -1)));
+        addRenderableWidget(control("DOWN: " + shortName(down), 1, 49, false,
+                button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, 1)));
+        addRenderableWidget(control("Custom DOWN OGG" + customStatus(down), 0, 72, false,
+                button -> ElevatorMediaStore.choose(liftId, "chime_down")));
+        addRenderableWidget(control("Reset DOWN to YTE", 1, 72, false,
+                button -> setDefaultChime("chime_down", DEFAULT_DOWN_CHIME)));
+        addRenderableWidget(control("Apply media pack / reload", 0, 97, true,
+                button -> applyPack()));
+    }
+
+    private void applyPack() {
+        String error = ElevatorMediaStore.reloadMediaPack();
+        applyFailed = error != null;
+        statusMessage = error != null ? error : "Resource pack reload started.";
     }
 
     private void cycleArrow(String key, String current, int step) {
         int index = ARROW_TEXTURES.indexOf(current);
-        if (index < 0) index = 0;
+        if (index < 0) index = step < 0 ? 0 : -1;
         index = Math.floorMod(index + step, ARROW_TEXTURES.size());
         ElevatorMediaStore.set(liftId, key, ARROW_TEXTURES.get(index));
         reopen(0);
@@ -193,14 +240,14 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void cycleFont(String current) {
         int index = YTE_FONTS.indexOf(current);
-        if (index < 0) index = 0;
+        if (index < 0) index = -1;
         ElevatorMediaStore.set(liftId, "floor_font", YTE_FONTS.get((index + 1) % YTE_FONTS.size()));
         reopen(1);
     }
 
     private void cycleChime(String key, String current, List<String> sounds, int step) {
         int index = sounds.indexOf(current);
-        if (index < 0) index = -1;
+        if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
         reopen(2);
     }

@@ -1,0 +1,118 @@
+package top.czaha.mtrjcmev;
+
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import org.mtr.mapping.holder.Identifier;
+import org.mtr.mapping.holder.OrderedText;
+import org.mtr.mapping.holder.Style;
+import org.mtr.mapping.mapper.GraphicsHolder;
+import org.mtr.mapping.mapper.TextHelper;
+
+import java.util.Map;
+import java.util.regex.Pattern;
+
+/**
+ * Immutable per-lift configuration prepared when settings are loaded or changed.
+ * Renderer and tick callbacks use this without locking the JSON settings store.
+ * Only the last formatted floor glyph is cached, avoiding an unbounded font cache.
+ */
+public final class LiftMediaRuntime {
+    private static final Pattern RESOURCE_PATH = Pattern.compile("[a-z0-9_./-]+");
+    private static final Pattern NAMESPACE = Pattern.compile("[a-z0-9_.-]+");
+    private static final String DEFAULT_UP_ARROW = "yte:block/otis_gen3_arrow_up";
+    private static final String DEFAULT_DOWN_ARROW = "yte:block/otis_gen3_arrow_down";
+    private static final String DEFAULT_UP_CHIME = "yte:otis_series_3_lantern_1_up";
+    private static final String DEFAULT_DOWN_CHIME = "yte:otis_series_3_lantern_1_down";
+
+    private final boolean hasVisualSettings;
+    private final boolean floorEnabled;
+    private final boolean customFont;
+    private final Identifier upArrow;
+    private final Identifier downArrow;
+    private final Identifier floorFont;
+    private final SoundEvent upChime;
+    private final SoundEvent downChime;
+    private volatile FloorGlyph cachedFloor;
+
+    public LiftMediaRuntime(String id, Map<String, String> settings) {
+        hasVisualSettings = settings.containsKey("arrow_up") || settings.containsKey("arrow_down")
+                || settings.containsKey("yte_up") || settings.containsKey("yte_down")
+                || settings.containsKey("floor_font") || settings.containsKey("font_custom")
+                || settings.containsKey("floor_enabled");
+        floorEnabled = !"false".equals(settings.get("floor_enabled"));
+        customFont = settings.containsKey("floor_font") || settings.containsKey("font_custom");
+        upArrow = parseTexture(settings.getOrDefault("arrow_up",
+                settings.getOrDefault("yte_up", DEFAULT_UP_ARROW)));
+        downArrow = parseTexture(settings.getOrDefault("arrow_down",
+                settings.getOrDefault("yte_down", DEFAULT_DOWN_ARROW)));
+        floorFont = customFont ? new Identifier("mtr_jcm_ev", "lift_" + id) : null;
+        upChime = parseSound(settings.getOrDefault("chime_up", DEFAULT_UP_CHIME));
+        downChime = parseSound(settings.getOrDefault("chime_down", DEFAULT_DOWN_CHIME));
+    }
+
+    public boolean hasVisualSettings() {
+        return hasVisualSettings;
+    }
+
+    public boolean floorEnabled() {
+        return floorEnabled;
+    }
+
+    public boolean customFont() {
+        return customFont;
+    }
+
+    public Identifier upArrow() {
+        return upArrow;
+    }
+
+    public Identifier downArrow() {
+        return downArrow;
+    }
+
+    public SoundEvent upChime() {
+        return upChime;
+    }
+
+    public SoundEvent downChime() {
+        return downChime;
+    }
+
+    public FloorGlyph glyph(String number) {
+        FloorGlyph found = cachedFloor;
+        if (found != null && found.value().equals(number)) return found;
+        if (floorFont == null) return null;
+
+        OrderedText formatted = TextHelper.mutableTextToOrderedText(
+                TextHelper.setStyle(TextHelper.literal(number),
+                        Style.getEmptyMapped().withFont(floorFont)));
+        FloorGlyph next = new FloorGlyph(number, formatted,
+                Math.max(1, GraphicsHolder.getTextWidth(formatted)));
+        cachedFloor = next;
+        return next;
+    }
+
+    private static Identifier parseTexture(String selected) {
+        if (selected == null) return null;
+        int split = selected.indexOf(':');
+        if (split < 1 || split == selected.length() - 1) return null;
+        String ns = selected.substring(0, split);
+        String path = selected.substring(split + 1);
+        if (!NAMESPACE.matcher(ns).matches() || !RESOURCE_PATH.matcher(path).matches()) return null;
+        if (path.startsWith("textures/")) {
+            return new Identifier(ns, path.endsWith(".png") ? path : path + ".png");
+        }
+        if (path.startsWith("block/") || path.startsWith("lift/")) {
+            return new Identifier(ns, "textures/" + path + ".png");
+        }
+        return null;
+    }
+
+    private static SoundEvent parseSound(String id) {
+        if (id == null) return null;
+        ResourceLocation location = ResourceLocation.tryParse(id);
+        return location == null ? null : SoundEvent.createVariableRangeEvent(location);
+    }
+
+    public record FloorGlyph(String value, OrderedText text, int width) { }
+}

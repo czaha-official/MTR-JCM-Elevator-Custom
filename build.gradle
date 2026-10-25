@@ -11,6 +11,8 @@ tasks.withType(JavaCompile) {
 
 subprojects {
     apply plugin: "java"
+    group = rootProject.group
+    version = rootProject.version
 
     repositories {
         flatDir { dirs "../libs" }
@@ -25,4 +27,3 @@ subprojects {
     }
 }
 
-// 部署 & 测试自动化

@@ -1,28 +1,98 @@
 # MTR JCM Elevator Custom for MJX
 
-Minecraft 1.20.1 Forge、MTR 4.0.5、JCM 2.3x、YTE (Yunzhu Transit Extension) 向けのエレベーター表示カスタムMODです。YTEの矢印テクスチャ、フォント、上り下りランタン音、Orange Liftスタイルを直接参照します。
+Minecraft **1.20.1 / Forge 47.x / Java 17** 用エレベーター表示・音声カスタマイズMODです。
+MTR 4.0.5 と YTE (Yunzhu Transit Extension) のインストールを想定しています。
 
-## 機能
+## 主な機能
 
-- Lift Refresherに設定画面を追加し、「矢印」「階数表示」「チャイム」のタブでLiftごとに設定
-- 上下方向はMTRのLiftDirectionから取得。YTEと同じ移動方向を表示し、停止中は矢印を消す
-- YTEの矢印テクスチャと数字フォントを選択可能。各方向のPNG、独自TTF/OTFで個別に上書き可能
-- 現在階の表示を切り替え可能
-- YTEの上り・下りランタン音を個別に選択可能。方向は最後に検出した移動方向に連動
-- 上り・下りチャイムを別々のOGGで上書き可能
-- 設定は1秒以内に反映し、矢印・フォント・階数表示の変更ではリソース再読み込み不要
-- 指定したPNG/TTF/OTFはスクリプトから直接読み込む。YTEサウンドの選択は即時反映し、OGG上書きだけはサウンド定義の再構築が必要なため「Apply chime files」を一度押す
+- MTRのLift Refresherの画面に **Media Settings** ボタンを追加
+- リフトごとに上昇/下降矢印を個別選択（YTEの候補または任意のPNG）
+- 現在階の表示ON/OFF
+- 現在階の表示フォントを個別選択（YTEのTTF/OTFまたは任意のTTF/OTF）
+- 上昇/下降の到着チャイムを個別選択（YTEのサウンドイベントまたは任意のVorbis OGG）
+- 移動中のみ矢印を表示、停止時は矢印を消す
+- リフトの移動方向がUP/DOWNからNONEに変化したとき、近くで到着チャイムを1回再生
+- 設定JSONとMinecraft 1.20.1用リソースパックを自動生成
+- 小さいGUIスケールに対応するようレイアウトを調整
+- 異常な画像サイズ、未対応OGGコーデック、破損したJSON、不正なパスの防御
 
-YTEはMITライセンスです。YTEのアセットを同梱せず、インストール済みYTEのリソースIDを参照します。
+## 仕組み
 
-## 設定方法
+**矢印と階数の描画はMTRの `RenderLifts.renderLiftDisplay` にMixinで連携しています。**
+設定がないリフトでは元のMTR描画を変更しません。設定済みリフトのみ矢印と階数を差し替えます。
+JCMが独自スクリプト制御によってMTR標準モデルの描画自体を停止するLiftスタイルの場合は、
+MTR標準表示も呼ばれないため、この方式の描画対象外です。
 
-1. クライアントにMinecraft 1.20.1 Forge、MTR 4.0.5、JCM 2.3、YTEを導入します。
-2. MTRのLift Refresherで対象エレベーターを開き、追加された`Elevator Media Settings`を選びます。
-3. タブから矢印画像・フォント・階数表示・上下チャイムを設定します。ファイル指定はゲーム画面にパスを入力します。
-4. Lift Refresherでは`JCM Elevator Custom`またはYTEの`Orange Lift`を選びます。どちらも通常のLift表示を残したまま、矢印と階数をスクリプトで重ねます。
-5. 矢印・フォントの設定は自動で反映されます。OGGを指定した場合だけ、チャイムタブで上下の音を設定した後に`Apply chime files`を押します。この操作で生成パックを有効にしてサウンドを一度再読み込みします。
+到着音はクライアントのLiftDirectionを監視します。初回ロード時には鳴らさず、
+移動終了（UP/DOWNからNONEへの遷移）時に近距離のクライアントだけで再生します。
+**到着音と画像・フォント設定はクライアントごとに保存され、マルチプレイサーバーへ自動同期しません。**
 
-選択内容は`.minecraft/config/mtr_jcm_elevator_media.json`に保存されます。カスタム画像、フォント、音声と`media_config.js`、`sounds.json`は`.minecraft/resourcepacks/MTR_JCM_Elevator_Custom`以下に生成されます。
+## 使用方法
 
-※最近の情勢の問題でコントリビューターを除き一時的にブランチ関係の制限をかけています
+1. Forge 1.20.1、MTR 4.0.5、YTEを導入します。
+2. Lift Refresherで対象リフトの設定画面を開き、「Media Settings」を押します。
+3. Arrows / Numbers / Chimesのタブで設定を変更します。
+4. 任意ファイルを指定する場合はそのファイルの絶対パスを入力します。
+5. **Apply media pack / reload** を押して生成パックを有効化・再読み込みします。
+
+設定は `.minecraft/config/mtr_jcm_elevator_media.json`、
+生成リソースパックは `.minecraft/resourcepacks/MTR_JCM_Elevator_Custom/` に保存されます。
+
+### 入力ファイルと制限
+
+- 矢印：PNG（入力は最大4096×4096画素、保存する画像は最大512pxに自動縮小）
+- フォント：TTF / OTF
+- チャイム：**Ogg Vorbis**（Opus形式のOGGはMinecraft標準音声エンジンでは非対応）
+- 各ファイル：最大32 MiB
+
+PNGは画像としてデコード可能か確認し、大きな画像を縮小します。音声とフォントは基本ヘッダー検証のみで、全ファイルの完全なデコード検証は行いません。
+
+## Minecraft向け軽量化
+
+- 描画ごとのJSON設定照会・ロック・テクスチャIDの解析をやめ、設定変更時に参照用のデータを準備します。
+- 階数表示のフォント整形を直近の階数についてキャッシュし、同じ階を連続描画する際の生成処理を減らします。
+- 到着チャイムは音声IDを事前解析し、クライアントtickで新しい一時集合を作らず、32tickごとに不要な監視情報を掃除します。
+- 初回設定の読み込みはクライアントtickで実行し、描画処理中に設定ファイルを読み込みません。
+- 同じ内容の生成パックファイルは再書き込みしません。また、必要のないリフト用フォント定義を生成しません。
+- **新しく取り込むPNGは、縦横の長辺が512pxを超える場合のみ縮小**します。既存の大きな画像は自動では変更されないため、縮小したい場合は再取り込みしてください。
+- Mixinの詳細デバッグ出力を通常は無効にしています。
+
+数値上のFPS改善は実機測定が必要です。これらの変更はCPU負荷・不要な割り当て・
+テクスチャ使用メモリを抑える設計上の最適化であり、FPS向上を保証するものではありません。
+
+## リソースパックの保存先
+
+- `assets/mtr_jcm_ev/textures/lift/<ID>/up.png`
+- `assets/mtr_jcm_ev/textures/lift/<ID>/down.png`
+- `assets/mtr_jcm_ev/font/<ID>/digits.ttf`（またはotf）
+- `assets/mtr_jcm_ev/font/lift_<ID>.json`（使用フォント定義）
+- `assets/mtr_jcm_ev/sounds/lift/<ID>/chime_up.ogg`
+- `assets/mtr_jcm_ev/sounds/lift/<ID>/chime_down.ogg`
+- `assets/mtr_jcm_ev/sounds.json`
+
+生成パックのリロードが必要なのは、外部ファイルを変更した場合、およびMinecraftの
+テクスチャ・フォント・サウンド定義を再取得する場合です。
+すでに読み込まれているYTE画像・フォント・音声の選択変更は設定ファイルへの書き込み後に参照されます。
+
+## ビルド
+
+```bash
+./gradlew :forge:build
+```
+
+ビルド環境と依存MODの解決が必要です。MTRの画面APIとRenderLiftsのシグネチャは
+対象バージョンと一致していることが前提です。
+
+## 現時点で未検証の事項
+
+- Forge環境での最終的なビルド成功、実機起動、Minecraftログ上のMixin適用
+- YTEの全テクスチャ候補の実在と、全音声候補の音量・距離特性
+- GUIの全スケールでの重なり、フォントの見え方、音量
+- JCMのスクリプト制御Liftスタイルと他の表示差し替えMODの競合
+- モーション終端でLiftDirectionがNONEに切り替わるタイミング
+
+**CodeQL解析の成功のみでは実機動作を保証できません。**
+
+## ライセンス
+
+MIT（LICENSE参照）。YTEの素材を配布せず、インストール済みYTEのリソースIDを参照します。
