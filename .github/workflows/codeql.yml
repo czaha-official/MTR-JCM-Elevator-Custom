@@ -1,42 +1,43 @@
-name: "Code Scanning"
+name: "CI & Code Scanning"
 
 on:
   push:
-    branches: [ "main", "master", "warudora" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main", "master", "warudora" ]
+    branches: [ "main", "master" ]
+
+# 新しくトリガーされたときに古いプロセスを自動キャンセル
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  analyze:
-    name: Analyze
+  build-and-analyze:
+    name: Build, Test & Analyze
     runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
       contents: read
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'java-kotlin' ]
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # CodeQLの初期化（ブラケットを外して文字列に変更）
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: ${{ matrix.language }}
+        languages: java-kotlin
 
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
 
-    - name: Build with Gradle
-      run: ./gradlew build -x test
+    - name: Build and Test with Gradle
+      run: ./gradlew build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
