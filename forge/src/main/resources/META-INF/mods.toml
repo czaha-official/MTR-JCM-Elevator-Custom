@@ -31,3 +31,10 @@ mandatory=true
 versionRange="[4.0.5,)"
 ordering="AFTER"
 side="CLIENT"
+
+[[dependencies.mtr_jcm_ev]]
+modId="jsblock"
+mandatory=true
+versionRange="[2.0.0,)"
+ordering="AFTER"
+side="CLIENT"
