@@ -36,7 +36,7 @@ dependencies {
 
 mixin {
     config "mtr_jcm_ev.mixins.json"
-    debug.verbose = true
+    debug.verbose = false
     debug.export = false
 }
 
