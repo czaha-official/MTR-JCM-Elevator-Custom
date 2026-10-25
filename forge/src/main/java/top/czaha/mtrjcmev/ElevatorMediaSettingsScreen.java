@@ -195,7 +195,9 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> clear("font_custom")));
         addRenderableWidget(control("Floor number: " + (enabled ? "ON" : "OFF"), 0, 54, true,
                 button -> {
-                    ElevatorMediaStore.set(liftId, "floor_enabled", Boolean.toString(!enabled));
+                    // ON is the vanilla default. Clearing OFF instead of
+                    // storing an explicit true avoids needless MTR display overrides.
+                    ElevatorMediaStore.set(liftId, "floor_enabled", enabled ? "false" : null);
                     reopen(1);
                 }));
         addRenderableWidget(control("Apply media pack / reload", 0, 82, true,
