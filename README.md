@@ -1,4 +1,4 @@
-# MTR JCM Elevator Custom
+# MTR JCM Elevator Custom for MJX
 
 Minecraft 1.20.1 Forge、MTR 4.0.5、JCM 2.3x、YTE (Yunzhu Transit Extension) 向けのエレベーター表示カスタムMODです。YTEの矢印テクスチャ、フォント、上り下りランタン音、Orange Liftスタイルを直接参照します。
 
