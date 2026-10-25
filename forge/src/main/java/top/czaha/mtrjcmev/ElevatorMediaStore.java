@@ -102,7 +102,7 @@ public final class ElevatorMediaStore {
             if (!Files.isRegularFile(selected) || !Files.isReadable(selected)) return "File cannot be read.";
             long size = Files.size(selected);
             if (size <= 0 || size > MAX_MEDIA_BYTES) return "File must be 1 byte to 32 MiB.";
-            if (!validMediaHeader(selected, extension)) return "File contents do not match ." + extension + ".";
+            if (!validMediaHeader(selected, extension)) return "Unsupported or invalid ." + extension + " media file.";
 
             Path gameDir = gameDir();
             Path assetRoot = gameDir.resolve("resourcepacks").resolve(PACK_NAME).resolve("assets/mtr_jcm_ev");
@@ -161,16 +161,35 @@ public final class ElevatorMediaStore {
 
     private static boolean validMediaHeader(Path file, String extension) throws IOException {
         try (InputStream stream = Files.newInputStream(file)) {
-            byte[] header = stream.readNBytes(8);
-            if ("png".equals(extension)) return Arrays.equals(header, PNG_HEADER);
+            byte[] header = stream.readNBytes(320);
+            if ("png".equals(extension)) {
+                if (header.length < 24 || !Arrays.equals(Arrays.copyOf(header, 8), PNG_HEADER)) return false;
+                if (header[12] != 'I' || header[13] != 'H' || header[14] != 'D' || header[15] != 'R') return false;
+                int imageWidth = readIntBigEndian(header, 16);
+                int imageHeight = readIntBigEndian(header, 20);
+                return imageWidth > 0 && imageWidth <= 4096 && imageHeight > 0 && imageHeight <= 4096;
+            }
             if (header.length < 4) return false;
-            if ("ogg".equals(extension)) return header[0] == 'O' && header[1] == 'g'
-                    && header[2] == 'g' && header[3] == 'S';
+            if ("ogg".equals(extension)) {
+                if (header.length < 34 || header[0] != 'O' || header[1] != 'g'
+                        || header[2] != 'g' || header[3] != 'S') return false;
+                int packetStart = 27 + (header[26] & 0xFF);
+                return packetStart + 7 <= header.length
+                        && header[packetStart] == 1
+                        && header[packetStart + 1] == 'v' && header[packetStart + 2] == 'o'
+                        && header[packetStart + 3] == 'r' && header[packetStart + 4] == 'b'
+                        && header[packetStart + 5] == 'i' && header[packetStart + 6] == 's';
+            }
             if ("otf".equals(extension)) return header[0] == 'O' && header[1] == 'T'
                     && header[2] == 'T' && header[3] == 'O';
             return (header[0] == 0 && header[1] == 1 && header[2] == 0 && header[3] == 0)
                     || (header[0] == 't' && header[1] == 'r' && header[2] == 'u' && header[3] == 'e');
         }
+    }
+
+    private static int readIntBigEndian(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF) << 24 | (bytes[offset + 1] & 0xFF) << 16
+                | (bytes[offset + 2] & 0xFF) << 8 | bytes[offset + 3] & 0xFF;
     }
 
     private static boolean validLiftId(String liftId) {
