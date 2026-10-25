@@ -1,0 +1,75 @@
+import org.mtr.mod.BuildTools
+
+plugins {
+    id "net.minecraftforge.gradle" version "6.+"
+    id "org.spongepowered.mixin" version "+"
+    //id 'systems.manifold.manifold-gradle-plugin' version '+'
+}
+
+
+final BuildTools buildTools = new BuildTools(minecraftVersion, "forge", project)
+
+minecraft {
+    mappings channel: "official", version: minecraftVersion
+    runs {
+        configureEach {
+            property "forge.logging.markers", "REGISTRIES"
+            property "forge.logging.console.level", "debug"
+        }
+        client {}
+        server { args "--nogui" }
+    }
+}
+
+
+sourceSets.main.resources { srcDir "src/generated/resources" }
+
+dependencies {
+    //implementation 'systems.manifold:manifold:+'
+    minecraft "net.minecraftforge:forge:${minecraftVersion}-${buildTools.getForgeVersion()}"
+    annotationProcessor "org.spongepowered:mixin:+:processor"
+    //annotationProcessor 'systems.manifold:manifold-preprocessor:+'
+    implementation fg.deobf("maven.modrinth:XKPAmI6u:R05lh1Ys")
+    implementation fg.deobf("maven.modrinth:lQqKCDhg:3f4bBklg")
+    runtimeOnly fg.deobf("maven.modrinth:nqMdKn6A:oqUBZs69")
+}
+
+mixin {
+    config "mtr_jcm_ev.mixins.json"
+    debug.verbose = true
+    debug.export = true
+}
+
+java {
+    toolchain {
+        println("Using Java " + JavaLanguageVersion.of(buildTools.javaLanguageVersion))
+        languageVersion.set(JavaLanguageVersion.of(buildTools.javaLanguageVersion))
+    }
+    withSourcesJar()
+    //withJavadocJar()
+}
+
+
+/*tasks.withType(JavaCompile).configureEach {
+    doLast {
+        configurations.runtimeClasspath.resolve()
+        configurations.compileClasspath.resolve()
+        configurations.annotationProcessor.resolve()
+    }
+
+    options.encoding = 'UTF-8'
+    options.fork = true
+
+    options.compilerArgs += [
+            '-Xplugin:Manifold',
+            '-AMC_VERSION=' + buildTools.getMCVersionNumber()
+    ]
+}*/
+
+
+build {
+    doLast {
+        buildTools.copyBuildFile()
+    }
+}
+
