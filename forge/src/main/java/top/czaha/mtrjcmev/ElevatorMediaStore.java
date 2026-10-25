@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.server.packs.repository.PackRepository;
 
 import javax.imageio.ImageIO;
@@ -428,6 +431,26 @@ public final class ElevatorMediaStore {
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    /**
+     * Preview the exact SoundEvent selected in the UI. This also identifies
+     * missing YTE sounds and generated resource packs that are not yet loaded.
+     */
+    public static synchronized String previewChime(String liftId, boolean up) {
+        load();
+        String key = up ? "chime_up" : "chime_down";
+        String fallback = up ? "yte:otis_series_3_lantern_1_up" : "yte:otis_series_3_lantern_1_down";
+        String id = DATA.getOrDefault(liftId, Map.of()).getOrDefault(key, fallback);
+        ResourceLocation soundId = ResourceLocation.tryParse(id);
+        if (soundId == null) return "Invalid sound event: " + id;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.getSoundManager().getSoundEvent(soundId) == null) {
+            return "Sound not loaded: " + id + " (check YTE or Apply media pack / reload)";
+        }
+        minecraft.getSoundManager().play(
+                SimpleSoundInstance.forUI(SoundEvent.createVariableRangeEvent(soundId), 1f));
+        return null;
     }
 
     public static String reloadMediaPack() {
