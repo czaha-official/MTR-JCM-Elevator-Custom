@@ -89,22 +89,6 @@ public final class ElevatorMediaStore {
         return values == null ? null : values.get(key);
     }
 
-    public static synchronized boolean hasVisualSettings(String liftId) {
-        load();
-        Map<String, String> values = DATA.get(liftId);
-        if (values == null) return false;
-        return values.containsKey("arrow_up") || values.containsKey("arrow_down")
-                || values.containsKey("yte_up") || values.containsKey("yte_down")
-                || values.containsKey("floor_font") || values.containsKey("font_custom")
-                || values.containsKey("floor_enabled");
-    }
-
-    public static synchronized boolean hasChimeSettings(String liftId) {
-        load();
-        Map<String, String> values = DATA.get(liftId);
-        return values != null && values.keySet().stream().anyMatch(key -> !"media_revision".equals(key));
-    }
-
     public static synchronized String getLastError() {
         load();
         return loadError != null ? loadError : lastError;
@@ -283,6 +267,7 @@ public final class ElevatorMediaStore {
         try {
             Map<String, Map<String, String>> saved = GSON.fromJson(Files.readString(file), DATA_TYPE);
             if (saved == null) return;
+            Map<Long, LiftMediaRuntime> initialRuntime = new LinkedHashMap<>();
             for (Map.Entry<String, Map<String, String>> entry : saved.entrySet()) {
                 String liftId = entry.getKey();
                 if (!validLiftId(liftId) || entry.getValue() == null) continue;
@@ -293,8 +278,15 @@ public final class ElevatorMediaStore {
                 migrateLegacyChime(values, liftId, "chime_up", "up");
                 migrateLegacyChime(values, liftId, "chime_down", "down");
                 DATA.put(liftId, values);
-                refreshRuntime(liftId);
+                if (!values.isEmpty() && !(values.size() == 1 && values.containsKey("media_revision"))) {
+                    try {
+                        initialRuntime.put(Long.parseLong(liftId), new LiftMediaRuntime(liftId, values));
+                    } catch (NumberFormatException ignored) {
+                        // An old nonnumeric lift ID can remain in the config without loading at runtime.
+                    }
+                }
             }
+            runtimeSnapshot = Map.copyOf(initialRuntime);
         } catch (IOException | RuntimeException exception) {
             DATA.clear();
             runtimeSnapshot = Map.of();
