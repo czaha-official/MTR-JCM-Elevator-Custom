@@ -83,20 +83,27 @@ public final class LiftArrivalSoundController {
             state.floorY = floorY;
             state.lastSeen = tick;
 
-            if (now == LiftDirection.UP || now == LiftDirection.DOWN) {
-                state.movementDirection = now;
+            boolean moving = now == LiftDirection.UP || now == LiftDirection.DOWN;
+            boolean newTrip = moving && (was == LiftDirection.NONE
+                    || (!state.armed && !state.playedForStop));
+            if (newTrip || floorY != priorFloor) {
+                state.playedForStop = false;
                 state.armed = true;
+            }
+            if (moving) {
+                state.movementDirection = now;
             } else if (floorY != priorFloor) {
                 state.movementDirection = floorY > priorFloor ? LiftDirection.UP : LiftDirection.DOWN;
-                state.armed = true;
             }
 
             boolean stopped = was != LiftDirection.NONE && now == LiftDirection.NONE;
             boolean opened = beforeDoor < DOOR_OPEN_THRESHOLD && doorValue >= DOOR_OPEN_THRESHOLD;
-            if (!state.armed || (!stopped && !opened) || tick - state.lastChime < MIN_CHIME_TICKS) {
+            if (!state.armed || state.playedForStop || (!stopped && !opened)
+                    || tick - state.lastChime < MIN_CHIME_TICKS) {
                 continue;
             }
             state.armed = false;
+            state.playedForStop = true;
 
             var floor = lift.getCurrentFloor().getPosition();
             double x = floor.getX() + 0.5;
@@ -137,6 +144,7 @@ public final class LiftArrivalSoundController {
         private long lastSeen;
         private long lastChime = Long.MIN_VALUE / 2;
         private boolean armed;
+        private boolean playedForStop;
 
         private TrackedLift(LiftDirection direction, float doorValue, long floorY, long tick) {
             this.direction = direction;
