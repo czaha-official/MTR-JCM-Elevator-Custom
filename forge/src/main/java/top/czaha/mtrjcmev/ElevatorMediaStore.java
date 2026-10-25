@@ -30,7 +30,8 @@ public final class ElevatorMediaStore {
     private static final long MAX_MEDIA_BYTES = 32L * 1024 * 1024;
     private static final byte[] PNG_HEADER = {(byte) 137, 80, 78, 71, 13, 10, 26, 10};
     private static final Map<String, Map<String, String>> DATA = new LinkedHashMap<>();
-    private static boolean loaded;
+    private static volatile boolean loaded;
+    private static volatile Map<Long, LiftMediaRuntime> runtimeSnapshot = Map.of();
     private static String loadError;
     private static String lastError;
 
@@ -44,6 +45,42 @@ public final class ElevatorMediaStore {
     public static void choose(String liftId, String key) {
         Minecraft minecraft = Minecraft.getInstance();
         minecraft.setScreen(new MediaFileSelectionScreen(minecraft.screen, liftId, key));
+    }
+
+    /**
+     * Initialize settings on the client tick, never as part of a rendering callback.
+     */
+    public static void preload() {
+        if (!loaded) {
+            synchronized (ElevatorMediaStore.class) {
+                load();
+            }
+        }
+    }
+
+    /**
+     * Lock-free lookup on the hot render/tick path.
+     * The read-only snapshot is replaced when the user changes settings.
+     */
+    public static LiftMediaRuntime runtimeFor(long liftId) {
+        return runtimeSnapshot.get(liftId);
+    }
+
+    private static void refreshRuntime(String liftId) {
+        final long numericId;
+        try {
+            numericId = Long.parseLong(liftId);
+        } catch (NumberFormatException exception) {
+            return;
+        }
+        Map<Long, LiftMediaRuntime> next = new LinkedHashMap<>(runtimeSnapshot);
+        Map<String, String> settings = DATA.get(liftId);
+        if (settings == null || (settings.size() == 1 && settings.containsKey("media_revision"))) {
+            next.remove(numericId);
+        } else {
+            next.put(numericId, new LiftMediaRuntime(liftId, settings));
+        }
+        runtimeSnapshot = Map.copyOf(next);
     }
 
     public static synchronized String get(String liftId, String key) {
@@ -99,6 +136,7 @@ public final class ElevatorMediaStore {
         }
         try {
             writeConfig(gameDir());
+            refreshRuntime(liftId);
             lastError = null;
         } catch (IOException exception) {
             restore(liftId, before);
@@ -150,6 +188,7 @@ public final class ElevatorMediaStore {
             DATA.put(liftId, after);
             try {
                 writeConfig(gameDir);
+                refreshRuntime(liftId);
                 lastError = null;
                 return null;
             } catch (IOException exception) {
@@ -254,9 +293,11 @@ public final class ElevatorMediaStore {
                 migrateLegacyChime(values, liftId, "chime_up", "up");
                 migrateLegacyChime(values, liftId, "chime_down", "down");
                 DATA.put(liftId, values);
+                refreshRuntime(liftId);
             }
         } catch (IOException | RuntimeException exception) {
             DATA.clear();
+            runtimeSnapshot = Map.of();
             loadError = "Settings JSON could not be read. Back up and repair config/mtr_jcm_elevator_media.json.";
         }
     }
@@ -292,6 +333,11 @@ public final class ElevatorMediaStore {
 
     private static void writeFontDefinition(Path pack, String liftId, Map<String, String> values)
             throws IOException {
+        Path destination = pack.resolve("assets/mtr_jcm_ev/font/lift_" + liftId + ".json");
+        if (!values.containsKey("font_custom") && !values.containsKey("floor_font")) {
+            Files.deleteIfExists(destination);
+            return;
+        }
         String file = values.get("font_custom");
         if (file == null || file.isBlank()) {
             file = values.getOrDefault("floor_font", "yte:font/otis-gen3-display.ttf");
@@ -308,11 +354,14 @@ public final class ElevatorMediaStore {
         fallback.put("id", "minecraft:default");
         Map<String, Object> definition = new LinkedHashMap<>();
         definition.put("providers", List.of(selectedProvider, fallback));
-        atomicWrite(pack.resolve("assets/mtr_jcm_ev/font/lift_" + liftId + ".json"),
-                GSON.toJson(definition));
+        atomicWrite(destination, GSON.toJson(definition));
     }
 
     private static void atomicWrite(Path destination, String contents) throws IOException {
+        // No disk writes for unchanged resources: avoids unnecessary file-watcher churn.
+        if (Files.isRegularFile(destination) && contents.equals(Files.readString(destination, StandardCharsets.UTF_8))) {
+            return;
+        }
         Files.createDirectories(destination.getParent());
         Path temporary = Files.createTempFile(destination.getParent(), ".mtr_jcm_ev-", ".tmp");
         try {
@@ -359,6 +408,9 @@ public final class ElevatorMediaStore {
             minecraft.options.updateResourcePacks(repository);
             minecraft.options.save();
             minecraft.reloadResourcePacks();
+            synchronized (ElevatorMediaStore.class) {
+                for (String id : DATA.keySet()) refreshRuntime(id);
+            }
             return null;
         } catch (RuntimeException exception) {
             return "Could not reload media pack: " + exception.getMessage();
