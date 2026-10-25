@@ -2,6 +2,7 @@ package top.czaha.mtrjcmev.mixin;
 
 import org.mtr.core.data.Lift;
 import org.mtr.mapping.mapper.ButtonWidgetExtension;
+import org.mtr.mapping.holder.ClickableWidget;
 import org.mtr.mod.screen.LiftCustomizationScreen;
 import org.mtr.mod.screen.MTRScreenBase;
 import top.czaha.mtrjcmev.ElevatorMediaStore;
@@ -28,7 +29,8 @@ public abstract class MixinLiftCustomizationScreen extends MTRScreenBase {
             y = Math.max(5, buttonLiftStyle.getY2() - 24);
         }
         y = Math.max(5, Math.min(y, this.height - 25));
-        addRenderableWidget(new ButtonWidgetExtension(x, y, buttonWidth, 20, "Elevator Media Settings", button ->
-                ElevatorMediaStore.openSettings(String.valueOf(lift.getId()))));
+        addChild(new ClickableWidget(new ButtonWidgetExtension(x, y, buttonWidth, 20,
+                "Elevator Media Settings", button ->
+                ElevatorMediaStore.openSettings(String.valueOf(lift.getId())))));
     }
 }
