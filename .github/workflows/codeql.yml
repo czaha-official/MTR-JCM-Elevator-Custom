@@ -1,4 +1,4 @@
-name: "Code Scanning"
+name: "CI & Code Scanning"
 
 on:
   push:
@@ -6,37 +6,40 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+# ★ 新しくトリガーされたときに、同じブランチの古いプロセスを自動でキャンセル（自爆）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  analyze:
-    name: Analyze
+  build-and-analyze:
+    name: Build, Test & Analyze
     runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
       contents: read
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'java-kotlin' ]
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # CodeQLの初期化（セキュリティスキャン）
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: ${{ matrix.language }}
+        languages: [ 'java-kotlin' ]
 
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '17' # 使用しているMinecraftバージョンに合わせて変更 (例: 17, 21)
+        java-version: '21' # Minecraftのバージョンに合わせて変更（17や21など）
         distribution: 'temurin'
 
-    - name: Build with Gradle
-      run: ./gradlew build -x test
+    # Gradleを使ったビルド＆テスト
+    - name: Build and Test with Gradle
+      run: ./gradlew build
 
+    # CodeQLの解析を実行
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
