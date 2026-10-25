@@ -86,6 +86,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private String statusMessage;
+    private boolean applyFailed;
 
     @Override
     protected void init() {
@@ -112,7 +113,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         String error = ElevatorMediaStore.getLastError();
         String heading = error != null ? error : statusMessage != null ? statusMessage : title.getString();
         graphics.drawCenteredString(font, Component.literal(font.plainSubstrByWidth(heading, Math.max(20, width - 16))),
-                width / 2, 12, error != null ? 0xFF5555 : 0xFFFFFF);
+                width / 2, 12, error != null || applyFailed ? 0xFF5555 : 0xFFFFFF);
         if (height >= 255) {
             String id = "Lift ID: " + liftId;
             graphics.drawCenteredString(font, Component.literal(font.plainSubstrByWidth(id, Math.max(20, width - 16))),
@@ -148,8 +149,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
         int half = (panel - 6) / 2;
         int x = fullWidth ? left : left + column * (half + 6);
         int buttonWidth = fullWidth ? panel : column == 0 ? half : panel - half - 6;
+        int controlY = height < 200 ? yOffset * 4 / 5 : yOffset;
+        int controlHeight = height < 200 ? 16 : 20;
         return Button.builder(Component.literal(label), onPress)
-                .bounds(x, contentTop() + yOffset, buttonWidth, 20).build();
+                .bounds(x, contentTop() + controlY, buttonWidth, controlHeight).build();
     }
 
     private void addArrowTab() {
@@ -223,6 +226,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void applyPack() {
         String error = ElevatorMediaStore.reloadMediaPack();
+        applyFailed = error != null;
         statusMessage = error != null ? error : "Resource pack reload started.";
     }
 
