@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "client": [
     "MixinLiftCustomizationScreen",
-    "MixinRenderLiftDisplay"
+    "MixinRenderLiftDisplay",
+    "MixinJcmArrivalChime"
   ],
   "injectors": {
     "defaultRequire": 1
