@@ -25,10 +25,3 @@ YTEはMITライセンスです。YTEのアセットを同梱せず、インス�
 
 選択内容は`.minecraft/config/mtr_jcm_elevator_media.json`に保存されます。カスタム画像、フォント、音声と`media_config.js`、`sounds.json`は`.minecraft/resourcepacks/MTR_JCM_Elevator_Custom`以下に生成されます。
 
-## マルチプレイ・サーバー
-
-JCMのLift Scriptと設定画面はクライアントで実行されます。専用サーバーへこの画面やAWTを読み込ませず、各プレイヤーのクライアントへMODと必要なYTE/JCM/MTRを導入してください。カスタムファイルと設定はクライアントのローカルに保存されるため、全員で同じ表示・音を使う場合は生成されたリソースパックを配布し、各クライアントで有効化するか、サーバーの`resource-pack`として配信してください。クライアント個別の設定・アップロードファイルをMODがサーバーへ自動送信する機能はありません。
-
-## 開発
-
-IntelliJ IDEAでGradleプロジェクトを開いてください。依存関係は`forge/build.gradle`にあります。プロジェクトの既存運用に従い、`gradlew.bat`は使いません。実機コンパイル・ゲーム内動作確認は未実施です。
