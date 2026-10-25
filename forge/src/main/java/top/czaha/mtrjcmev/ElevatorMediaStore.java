@@ -52,6 +52,22 @@ public final class ElevatorMediaStore {
         return values == null ? null : values.get(key);
     }
 
+    public static synchronized boolean hasVisualSettings(String liftId) {
+        load();
+        Map<String, String> values = DATA.get(liftId);
+        if (values == null) return false;
+        return values.containsKey("arrow_up") || values.containsKey("arrow_down")
+                || values.containsKey("yte_up") || values.containsKey("yte_down")
+                || values.containsKey("floor_font") || values.containsKey("font_custom")
+                || values.containsKey("floor_enabled");
+    }
+
+    public static synchronized boolean hasChimeSettings(String liftId) {
+        load();
+        Map<String, String> values = DATA.get(liftId);
+        return values != null && (values.containsKey("chime_up") || values.containsKey("chime_down"));
+    }
+
     public static synchronized String getLastError() {
         load();
         return loadError != null ? loadError : lastError;
@@ -261,19 +277,39 @@ public final class ElevatorMediaStore {
         Path pack = gameDir.resolve("resourcepacks").resolve(PACK_NAME);
         atomicWrite(pack.resolve("pack.mcmeta"),
                 "{\"pack\":{\"pack_format\":15,\"description\":\"MTR JCM Elevator Custom media\"}}");
-        atomicWrite(pack.resolve("assets/mtr/js/mtr_jcm_ev/media_config.js"),
-                "var MEDIA_CONFIG = " + GSON.toJson(DATA) + ";\n");
-
         Map<String, Object> sounds = new LinkedHashMap<>();
         for (Map.Entry<String, Map<String, String>> entry : DATA.entrySet()) {
             String liftId = entry.getKey();
             if (!validLiftId(liftId)) continue;
+            writeFontDefinition(pack, liftId, entry.getValue());
             addSound(sounds, liftId, entry.getValue(), "chime_up", "up");
             addSound(sounds, liftId, entry.getValue(), "chime_down", "down");
         }
         atomicWrite(pack.resolve("assets/mtr_jcm_ev/sounds.json"), GSON.toJson(sounds));
         // Save the authoritative configuration last so failed pack writes do not commit settings.
         atomicWrite(config, GSON.toJson(DATA));
+    }
+
+    private static void writeFontDefinition(Path pack, String liftId, Map<String, String> values)
+            throws IOException {
+        String file = values.get("font_custom");
+        if (file == null || file.isBlank()) {
+            file = values.getOrDefault("floor_font", "yte:font/otis-gen3-display.ttf");
+        }
+        if (file == null || !file.matches("[a-z0-9_.-]+:[a-z0-9_./-]+\\.(ttf|otf)")) return;
+        Map<String, Object> selectedProvider = new LinkedHashMap<>();
+        selectedProvider.put("type", "ttf");
+        selectedProvider.put("file", file);
+        selectedProvider.put("shift", List.of(0.0, 0.0));
+        selectedProvider.put("size", 11.0);
+        selectedProvider.put("oversample", 2.0);
+        Map<String, Object> fallback = new LinkedHashMap<>();
+        fallback.put("type", "reference");
+        fallback.put("id", "minecraft:default");
+        Map<String, Object> definition = new LinkedHashMap<>();
+        definition.put("providers", List.of(selectedProvider, fallback));
+        atomicWrite(pack.resolve("assets/mtr_jcm_ev/font/lift_" + liftId + ".json"),
+                GSON.toJson(definition));
     }
 
     private static void atomicWrite(Path destination, String contents) throws IOException {
