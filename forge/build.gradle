@@ -37,7 +37,7 @@ dependencies {
 mixin {
     config "mtr_jcm_ev.mixins.json"
     debug.verbose = true
-    debug.export = true
+    debug.export = false
 }
 
 java {
@@ -66,6 +66,12 @@ java {
     ]
 }*/
 
+
+jar {
+    manifest {
+        attributes("MixinConfigs": "mtr_jcm_ev.mixins.json")
+    }
+}
 
 build {
     doLast {
