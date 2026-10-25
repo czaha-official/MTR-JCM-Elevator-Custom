@@ -134,7 +134,7 @@ public final class ElevatorMediaStore {
             writeConfig(gameDir());
             refreshRuntime(liftId);
             lastError = null;
-        } catch (IOException exception) {
+        } catch (IOException | RuntimeException exception) {
             restore(liftId, before);
             lastError = "Could not save settings: " + exception.getMessage();
         }
@@ -176,25 +176,47 @@ public final class ElevatorMediaStore {
                 default -> { return "Unknown media type."; }
             }
             Files.createDirectories(output.getParent());
-            if (key.equals("arrow_up") || key.equals("arrow_down")) {
-                importArrow(selected, output);
-            } else {
-                atomicCopy(selected, output);
+            // Preserve the previously imported file until the config is committed.
+            // Failed imports must not replace a working resource with bad media.
+            Path backup = null;
+            if (Files.isRegularFile(output)) {
+                backup = Files.createTempFile(output.getParent(), ".mtr_jcm_ev-backup-", ".tmp");
+                Files.copy(output, backup, StandardCopyOption.REPLACE_EXISTING);
             }
-            Map<String, String> before = new LinkedHashMap<>(DATA.getOrDefault(liftId, Map.of()));
-            Map<String, String> after = new LinkedHashMap<>(before);
-            after.put(key, resourceId);
-            after.put("media_revision", nextRevision(before));
-            DATA.put(liftId, after);
+            boolean committed = false;
             try {
-                writeConfig(gameDir);
-                refreshRuntime(liftId);
-                lastError = null;
-                return null;
-            } catch (IOException exception) {
-                restore(liftId, before);
-                lastError = "Could not write media configuration: " + exception.getMessage();
-                return lastError;
+                if (key.equals("arrow_up") || key.equals("arrow_down")) {
+                    importArrow(selected, output);
+                } else {
+                    atomicCopy(selected, output);
+                }
+                Map<String, String> before = new LinkedHashMap<>(DATA.getOrDefault(liftId, Map.of()));
+                Map<String, String> after = new LinkedHashMap<>(before);
+                after.put(key, resourceId);
+                after.put("media_revision", nextRevision(before));
+                DATA.put(liftId, after);
+                try {
+                    writeConfig(gameDir);
+                    refreshRuntime(liftId);
+                    committed = true;
+                    lastError = null;
+                    return null;
+                } catch (IOException | RuntimeException exception) {
+                    restore(liftId, before);
+                    lastError = "Could not write media configuration: " + exception.getMessage();
+                    return lastError;
+                }
+            } finally {
+                if (!committed) {
+                    // Best-effort rollback, including the first-ever import.
+                    try {
+                        if (backup == null) Files.deleteIfExists(output);
+                        else Files.copy(backup, output, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException rollbackError) {
+                        lastError = "Import failed; media rollback also failed: " + rollbackError.getMessage();
+                    }
+                }
+                if (backup != null) Files.deleteIfExists(backup);
             }
         } catch (IOException | RuntimeException exception) {
             lastError = "Could not import file: " + exception.getMessage();
