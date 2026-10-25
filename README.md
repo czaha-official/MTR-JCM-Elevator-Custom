@@ -24,5 +24,3 @@ YTEはMITライセンスです。YTEのアセットを同梱せず、インス�
 5. 矢印・フォントの設定は自動で反映されます。OGGを指定した場合だけ、チャイムタブで上下の音を設定した後に`Apply chime files`を押します。この操作で生成パックを有効にしてサウンドを一度再読み込みします。
 
 選択内容は`.minecraft/config/mtr_jcm_elevator_media.json`に保存されます。カスタム画像、フォント、音声と`media_config.js`、`sounds.json`は`.minecraft/resourcepacks/MTR_JCM_Elevator_Custom`以下に生成されます。
-
-※最近の情勢の問題でコントリビューターを除き一時的にブランチ関係の制限をかけています
