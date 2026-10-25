@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+displayURL="https://github.com/czaha-official/MTR-JCM-Elevator-Custom"
+issueTrackerURL="https://github.com/czaha-official/MTR-JCM-Elevator-Custom/issues"
+
+[[mods]]
+modId="mtr_jcm_ev"
+version="${file.jarVersion}"
+displayName="MTR JCM Elevator Custom"
+description="Per-lift client-side media settings and generated resource pack for Minecraft Transit Railway."
+displayTest="IGNORE_SERVER_VERSION"
+
+[[dependencies.mtr_jcm_ev]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.mtr_jcm_ev]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="CLIENT"
