@@ -1,0 +1,42 @@
+name: "Code Scanning"
+
+on:
+  push:
+    branches: [ "main", "master", "warudora" ]
+  pull_request:
+    branches: [ "main", "master", "warudora" ]
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java-kotlin' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build with Gradle
+      run: ./gradlew build -x test
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
