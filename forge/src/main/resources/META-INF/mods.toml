@@ -24,3 +24,10 @@ mandatory=true
 versionRange="[1.20.1,1.20.2)"
 ordering="NONE"
 side="CLIENT"
+
+[[dependencies.mtr_jcm_ev]]
+modId="mtr"
+mandatory=true
+versionRange="[4.0.5,)"
+ordering="AFTER"
+side="CLIENT"
