@@ -43,8 +43,17 @@ public abstract class MixinRenderLiftDisplay {
     private static final int DISPLAY_COLOR = 0xFFFF0000;
     private static final Logger LOGGER = LogManager.getLogger("MTR-JCM-Elevator-Custom");
     // id and remaining calls; reusable per-thread, no per-frame allocation or private nested class.
-    private static final ThreadLocal<long[]> PRE_RENDERED = ThreadLocal.withInitial(() -> new long[2]);
+    private static final ThreadLocal<long[]> PRE_RENDERED = new ThreadLocal<>();
     private static boolean loggedOverlay;
+
+    private static long[] mtrJcmEv$suppression() {
+        long[] state = PRE_RENDERED.get();
+        if (state == null) {
+            state = new long[2];
+            PRE_RENDERED.set(state);
+        }
+        return state;
+    }
 
     /**
      * JCM can cancel the render lambda before the vanilla in-cab display call.
@@ -55,7 +64,7 @@ public abstract class MixinRenderLiftDisplay {
             ObjectArrayList cullingTasks, Vec3d camera, Vector3d cameraShakeOffset, boolean canRide,
             ClientPlayerEntity player, long millisElapsed, MinecraftClientData.LiftWrapper wrapper,
             CallbackInfo ci) {
-        PRE_RENDERED.get()[1] = 0;
+        mtrJcmEv$suppression()[1] = 0;
     }
 
     @Inject(method = "lambda$render$6", at = @At(value = "INVOKE", target =
@@ -75,7 +84,7 @@ public abstract class MixinRenderLiftDisplay {
 
         LiftMediaRuntime media = ElevatorMediaStore.runtimeFor(lift.getId());
         if (media == null || !media.hasVisualSettings()) {
-            PRE_RENDERED.get()[1] = 0;
+            mtrJcmEv$suppression()[1] = 0;
             return;
         }
 
@@ -90,7 +99,7 @@ public abstract class MixinRenderLiftDisplay {
             });
             mtrJcmEv$drawConfigured(display, world, lift, media, 0.1875F, 0.3125F);
         }
-        long[] suppression = PRE_RENDERED.get();
+        long[] suppression = mtrJcmEv$suppression();
         suppression[0] = lift.getId();
         suppression[1] = sides;
         if (!loggedOverlay) {
@@ -110,7 +119,7 @@ public abstract class MixinRenderLiftDisplay {
 
         // Skip duplicate display calls for the same lift only. The fallback
         // above still renders normally if the pre-model hook is unavailable.
-        long[] suppression = PRE_RENDERED.get();
+        long[] suppression = mtrJcmEv$suppression();
         if (suppression[0] == lift.getId() && suppression[1] > 0) {
             suppression[1]--;
             ci.cancel();
