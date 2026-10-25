@@ -25,6 +25,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Stream;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -285,6 +288,9 @@ public final class ElevatorMediaStore {
                 String liftId = entry.getKey();
                 if (!validLiftId(liftId) || entry.getValue() == null) continue;
                 Map<String, String> values = new LinkedHashMap<>(entry.getValue());
+                // Corrupt or hand-edited JSON can contain null map entries.
+                values.entrySet().removeIf(value -> value.getKey() == null
+                        || value.getValue() == null || value.getValue().isBlank());
                 migrateLegacyValue(values, "up", "arrow_up");
                 migrateLegacyValue(values, "down", "arrow_down");
                 migrateLegacyValue(values, "chime", "chime_up");
@@ -324,12 +330,31 @@ public final class ElevatorMediaStore {
         atomicWrite(pack.resolve("pack.mcmeta"),
                 "{\"pack\":{\"pack_format\":15,\"description\":\"MTR JCM Elevator Custom media\"}}");
         Map<String, Object> sounds = new LinkedHashMap<>();
+        Set<String> expectedFonts = new HashSet<>();
         for (Map.Entry<String, Map<String, String>> entry : DATA.entrySet()) {
             String liftId = entry.getKey();
             if (!validLiftId(liftId)) continue;
             writeFontDefinition(pack, liftId, entry.getValue());
+            if (entry.getValue().containsKey("floor_font")
+                    || entry.getValue().containsKey("font_custom")) {
+                expectedFonts.add("lift_" + liftId + ".json");
+            }
             addSound(sounds, liftId, entry.getValue(), "chime_up", "up");
             addSound(sounds, liftId, entry.getValue(), "chime_down", "down");
+        }
+        // Remove only our own generated per-lift font descriptors. Deleted
+        // settings otherwise left old font JSONs active forever in the pack.
+        Path fontFolder = pack.resolve("assets/mtr_jcm_ev/font");
+        if (Files.isDirectory(fontFolder)) {
+            try (Stream<Path> files = Files.list(fontFolder)) {
+                for (Path path : files.toList()) {
+                    String name = path.getFileName().toString();
+                    if (Files.isRegularFile(path) && name.matches("lift_[a-zA-Z0-9_-]{1,64}\\.json")
+                            && !expectedFonts.contains(name)) {
+                        Files.deleteIfExists(path);
+                    }
+                }
+            }
         }
         atomicWrite(pack.resolve("assets/mtr_jcm_ev/sounds.json"), GSON.toJson(sounds));
         // Save the authoritative configuration last so failed pack writes do not commit settings.
