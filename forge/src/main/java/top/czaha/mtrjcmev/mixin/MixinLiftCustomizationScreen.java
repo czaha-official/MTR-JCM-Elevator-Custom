@@ -21,16 +21,16 @@ public abstract class MixinLiftCustomizationScreen extends MTRScreenBase {
     @Inject(method = "init2", at = @At("TAIL"), remap = false)
     private void mtrJcmEv$addMediaButtons(CallbackInfo ci) {
         if (lift == null || buttonLiftStyle == null) return;
-        int buttonWidth = Math.min(buttonLiftStyle.getWidth2(), Math.max(0, this.width - 10));
+        // MTR reserves the row between offset Z (row 5) and double-sided (row 7).
+        // Placing our button below Lift Style would overlap the rotation buttons.
+        int buttonHeight = Math.max(16, buttonLiftStyle.getHeight2() - 4);
+        int buttonWidth = Math.min(buttonLiftStyle.getWidth2() - 4, Math.max(0, this.width - 10));
         if (buttonWidth <= 0 || this.height < 25) return;
-        int x = Math.max(5, Math.min(buttonLiftStyle.getX2(), this.width - buttonWidth - 5));
-        int y = buttonLiftStyle.getY2() + buttonLiftStyle.getHeight2() + 4;
-        if (y + 20 > this.height - 5) {
-            y = Math.max(5, buttonLiftStyle.getY2() - 24);
-        }
-        y = Math.max(5, Math.min(y, this.height - 25));
-        addChild(new ClickableWidget(new ButtonWidgetExtension(x, y, buttonWidth, 20,
-                "Elevator Media Settings", button ->
+        int x = Math.max(5, Math.min(buttonLiftStyle.getX2() + 2, this.width - buttonWidth - 5));
+        int y = buttonLiftStyle.getY2() - 2 * buttonLiftStyle.getHeight2() + 2;
+        if (y < 5 || y + buttonHeight > this.height - 5) return;
+        addChild(new ClickableWidget(new ButtonWidgetExtension(x, y, buttonWidth, buttonHeight,
+                "Media Settings", button ->
                 ElevatorMediaStore.openSettings(String.valueOf(lift.getId())))));
     }
 }
