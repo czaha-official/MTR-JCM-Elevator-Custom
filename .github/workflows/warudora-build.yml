@@ -25,5 +25,12 @@ jobs:
           java-version: '17'
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
-      - name: Assemble Forge mod
-        run: bash ./gradlew --no-daemon :forge:compileJava :forge:processResources :forge:jar --stacktrace
+      - name: Build distributable Forge mod
+        run: bash ./gradlew --no-daemon :forge:build --stacktrace
+      - name: Upload compiled mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTR-JCM-Elevator-Custom-warudora-1.20.1
+          path: build/release/*.jar
+          if-no-files-found: error
+          retention-days: 7
