@@ -23,6 +23,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.czaha.mtrjcmev.ElevatorMediaStore;
 import top.czaha.mtrjcmev.LiftMediaRuntime;
+import top.czaha.mtrjcmev.LiftTravelState;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +41,7 @@ public abstract class MixinJcmArrivalChime {
     @Unique
     private static final Logger MTR_JCM_EV_LOGGER = LogManager.getLogger("MTR-JCM-Elevator-Custom");
     @Unique
-    private static final Map<Long, TravelState> MTR_JCM_EV_TRAVEL = new HashMap<>();
+    private static final Map<Long, LiftTravelState> MTR_JCM_EV_TRAVEL = new HashMap<>();
     @Unique
     private static ClientLevel MTR_JCM_EV_WORLD;
     @Unique
@@ -63,33 +64,27 @@ public abstract class MixinJcmArrivalChime {
 
         long floorY = lift.getCurrentFloor().getPosition().getY();
         LiftDirection currentDirection = lift.getDirection();
-        TravelState history = MTR_JCM_EV_TRAVEL.get(liftId);
+        LiftTravelState history = MTR_JCM_EV_TRAVEL.get(liftId);
         if (history == null) {
-            history = new TravelState(floorY);
+            history = new LiftTravelState(floorY);
             MTR_JCM_EV_TRAVEL.put(liftId, history);
         }
-        if (currentDirection == LiftDirection.UP || currentDirection == LiftDirection.DOWN) {
-            history.lastDirection = currentDirection;
-        } else if (floorY != history.lastFloorY) {
-            history.lastDirection = floorY > history.lastFloorY
-                    ? LiftDirection.UP : LiftDirection.DOWN;
-        }
-        history.lastFloorY = floorY;
-        history.lastSeenCall = ++MTR_JCM_EV_CALLS;
+        history.update(currentDirection, floorY);
+        history.markSeen(++MTR_JCM_EV_CALLS);
 
         // Very lightweight pruning when lifts have been removed/unloaded.
         if ((MTR_JCM_EV_CALLS & 4095) == 0) {
             long expiry = MTR_JCM_EV_CALLS - 8192;
-            MTR_JCM_EV_TRAVEL.values().removeIf(state -> state.lastSeenCall < expiry);
+            MTR_JCM_EV_TRAVEL.values().removeIf(state -> state.getLastSeenCall() < expiry);
         }
 
         if (!cir.getReturnValueZ()) return;
         LiftMediaRuntime selected = ElevatorMediaStore.runtimeFor(liftId);
         if (selected == null || !selected.hasChimeSettings()) return;
 
-        SoundEvent sound = history.lastDirection == LiftDirection.DOWN
+        SoundEvent sound = history.getLastDirection() == LiftDirection.DOWN
                 ? selected.downChime()
-                : history.lastDirection == LiftDirection.UP ? selected.upChime() : null;
+                : history.getLastDirection() == LiftDirection.UP ? selected.upChime() : null;
         // Only replace directions explicitly selected by the user. A null or
         // unknown direction leaves JCM\u0027s original arrival chime intact.
         if (sound == null) return;
@@ -119,20 +114,10 @@ public abstract class MixinJcmArrivalChime {
         if (mc.player.distanceToSqr(x, y, z) <= 32d * 32d) {
             level.playLocalSound(x, y, z, sound, SoundSource.BLOCKS, 1.0f, 1.0f, false);
             MTR_JCM_EV_LOGGER.info("Played lift {} configured {} sound {}",
-                    liftId, history.lastDirection, sound.getLocation());
+                    liftId, history.getLastDirection(), sound.getLocation());
         }
         // Replaces JCM's default "minecraft:block.note_block.pling" for this lift.
         cir.setReturnValue(false);
     }
 
-    @Unique
-    private static final class TravelState {
-        private long lastFloorY;
-        private LiftDirection lastDirection = LiftDirection.NONE;
-        private long lastSeenCall;
-
-        private TravelState(long firstFloor) {
-            this.lastFloorY = firstFloor;
-        }
-    }
 }
