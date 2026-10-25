@@ -1,4 +1,4 @@
-# MTR JCM Elevator Custom
+# MTR JCM Elevator Custom for MJX
 
 Minecraft **1.20.1 / Forge 47.x** 向けの、MTRエレベーター単位でメディア設定を管理するクライアントMODです。
 
