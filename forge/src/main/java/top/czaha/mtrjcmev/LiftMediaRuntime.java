@@ -21,8 +21,6 @@ public final class LiftMediaRuntime {
     private static final Pattern NAMESPACE = Pattern.compile("[a-z0-9_.-]+");
     private static final String DEFAULT_UP_ARROW = "yte:block/otis_gen3_arrow_up";
     private static final String DEFAULT_DOWN_ARROW = "yte:block/otis_gen3_arrow_down";
-    private static final String DEFAULT_UP_CHIME = "yte:otis_series_3_lantern_1_up";
-    private static final String DEFAULT_DOWN_CHIME = "yte:otis_series_3_lantern_1_down";
 
     private final boolean hasVisualSettings;
     private final boolean floorEnabled;
@@ -48,8 +46,8 @@ public final class LiftMediaRuntime {
                 settings.getOrDefault("yte_down", DEFAULT_DOWN_ARROW)));
         floorFont = customFont ? new Identifier("mtr_jcm_ev", "lift_" + id) : null;
         hasChimeSettings = settings.containsKey("chime_up") || settings.containsKey("chime_down");
-        upChime = parseSound(settings.getOrDefault("chime_up", DEFAULT_UP_CHIME));
-        downChime = parseSound(settings.getOrDefault("chime_down", DEFAULT_DOWN_CHIME));
+        upChime = parseSound(settings.get("chime_up"));
+        downChime = parseSound(settings.get("chime_down"));
     }
 
     public boolean hasVisualSettings() {
