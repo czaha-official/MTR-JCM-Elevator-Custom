@@ -24,20 +24,21 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # CodeQLの初期化（ブラケットを外して文字列に変更）
+    # CodeQLの初期化（v4に更新）
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: java-kotlin
 
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
 
     - name: Build and Test with Gradle
       run: ./gradlew build
 
+    # CodeQLの解析を実行（v4に更新）
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
