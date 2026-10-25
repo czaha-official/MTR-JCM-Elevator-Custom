@@ -70,7 +70,7 @@ public abstract class MixinRenderLiftDisplay {
                         (graphicsHolder, offset) -> {
                             transformations.transform(graphicsHolder, offset);
                             IDrawing.drawTexture(graphicsHolder, -width / 6, 0, width / 3, width / 3,
-                                    0, 0, 1, 1, Direction.UP, DISPLAY_COLOR,
+                                    0, 0, 1, 1, Direction.UP, 0xFFFFFFFF,
                                     GraphicsHolder.getDefaultLight());
                             graphicsHolder.pop();
                         });
