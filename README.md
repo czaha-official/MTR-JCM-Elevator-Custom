@@ -25,3 +25,4 @@ YTEはMITライセンスです。YTEのアセットを同梱せず、インス�
 
 選択内容は`.minecraft/config/mtr_jcm_elevator_media.json`に保存されます。カスタム画像、フォント、音声と`media_config.js`、`sounds.json`は`.minecraft/resourcepacks/MTR_JCM_Elevator_Custom`以下に生成されます。
 
+※最近の情勢の問題でコントリビューターを除き一時的にブランチ関係の制限をかけています
