@@ -6,6 +6,11 @@ import com.google.gson.reflect.TypeToken;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.packs.repository.PackRepository;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -28,6 +33,7 @@ public final class ElevatorMediaStore {
     private static final Pattern SAFE_LIFT_ID = Pattern.compile("[a-zA-Z0-9_-]{1,64}");
     private static final String PACK_NAME = "MTR_JCM_Elevator_Custom";
     private static final long MAX_MEDIA_BYTES = 32L * 1024 * 1024;
+    private static final int MAX_STORED_ARROW_PIXELS = 512;
     private static final byte[] PNG_HEADER = {(byte) 137, 80, 78, 71, 13, 10, 26, 10};
     private static final Map<String, Map<String, String>> DATA = new LinkedHashMap<>();
     private static volatile boolean loaded;
@@ -164,7 +170,11 @@ public final class ElevatorMediaStore {
                 default -> { return "Unknown media type."; }
             }
             Files.createDirectories(output.getParent());
-            atomicCopy(selected, output);
+            if (key.equals("arrow_up") || key.equals("arrow_down")) {
+                importArrow(selected, output);
+            } else {
+                atomicCopy(selected, output);
+            }
             Map<String, String> before = new LinkedHashMap<>(DATA.getOrDefault(liftId, Map.of()));
             Map<String, String> after = new LinkedHashMap<>(before);
             after.put(key, resourceId);
@@ -358,6 +368,43 @@ public final class ElevatorMediaStore {
         Path temporary = Files.createTempFile(destination.getParent(), ".mtr_jcm_ev-", ".tmp");
         try {
             Files.writeString(temporary, contents, StandardCharsets.UTF_8);
+            moveReplacing(temporary, destination);
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
+    /**
+     * Oversized arrow textures needlessly consume VRAM for a tiny lift display.
+     * Resize only at import time; never decode images on the render thread.
+     */
+    private static void importArrow(Path source, Path destination) throws IOException {
+        BufferedImage input = ImageIO.read(source.toFile());
+        if (input == null) throw new IOException("Invalid or unsupported PNG image.");
+        int longest = Math.max(input.getWidth(), input.getHeight());
+        if (longest <= MAX_STORED_ARROW_PIXELS) {
+            atomicCopy(source, destination);
+            return;
+        }
+
+        double ratio = MAX_STORED_ARROW_PIXELS / (double) longest;
+        int targetWidth = Math.max(1, (int) Math.round(input.getWidth() * ratio));
+        int targetHeight = Math.max(1, (int) Math.round(input.getHeight() * ratio));
+        BufferedImage scaled = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = scaled.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            graphics.drawImage(input, 0, 0, targetWidth, targetHeight, null);
+        } finally {
+            graphics.dispose();
+        }
+
+        Path temporary = Files.createTempFile(destination.getParent(), ".mtr_jcm_ev-arrow-", ".png");
+        try {
+            if (!ImageIO.write(scaled, "png", temporary.toFile())) {
+                throw new IOException("No PNG encoder available.");
+            }
             moveReplacing(temporary, destination);
         } finally {
             Files.deleteIfExists(temporary);
