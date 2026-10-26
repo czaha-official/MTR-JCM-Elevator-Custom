@@ -256,9 +256,11 @@ final class ElevatorMediaSettingsScreen extends Screen {
         }
         String up = valueOrDefault("chime_up", DEFAULT_UP_CHIME);
         String down = valueOrDefault("chime_down", DEFAULT_DOWN_CHIME);
+        String upLabel = ElevatorMediaStore.get(liftId, "chime_up") == null ? "JCM default" : shortName(up);
+        String downLabel = ElevatorMediaStore.get(liftId, "chime_down") == null ? "JCM default" : shortName(down);
         addRenderableWidget(control("Previous UP", 0, 0, false,
                 button -> cycleChime("chime_up", up, YTE_UP_CHIMES, -1)));
-        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+        addRenderableWidget(control("UP: " + upLabel, 1, 0, false,
                 button -> cycleChime("chime_up", up, YTE_UP_CHIMES, 1)));
         addRenderableWidget(control("Custom UP OGG" + customStatus(up), 0, 23, false,
                 button -> ElevatorMediaStore.choose(liftId, "chime_up")));
@@ -266,7 +268,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> setDefaultChime("chime_up", DEFAULT_UP_CHIME)));
         addRenderableWidget(control("Previous DOWN", 0, 49, false,
                 button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, -1)));
-        addRenderableWidget(control("DOWN: " + shortName(down), 1, 49, false,
+        addRenderableWidget(control("DOWN: " + downLabel, 1, 49, false,
                 button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, 1)));
         addRenderableWidget(control("Custom DOWN OGG" + customStatus(down), 0, 72, false,
                 button -> ElevatorMediaStore.choose(liftId, "chime_down")));
@@ -280,9 +282,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void addChimeUpCompact() {
         String up = valueOrDefault("chime_up", DEFAULT_UP_CHIME);
+        String upLabel = ElevatorMediaStore.get(liftId, "chime_up") == null ? "JCM default" : shortName(up);
         addRenderableWidget(control("Previous UP", 0, 0, false,
                 button -> cycleChime("chime_up", up, YTE_UP_CHIMES, -1)));
-        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+        addRenderableWidget(control("UP: " + upLabel, 1, 0, false,
                 button -> cycleChime("chime_up", up, YTE_UP_CHIMES, 1)));
         addRenderableWidget(control("Custom UP OGG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "chime_up")));
@@ -294,9 +297,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void addChimeDownCompact() {
         String down = valueOrDefault("chime_down", DEFAULT_DOWN_CHIME);
+        String downLabel = ElevatorMediaStore.get(liftId, "chime_down") == null ? "JCM default" : shortName(down);
         addRenderableWidget(control("Previous DOWN", 0, 0, false,
                 button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, -1)));
-        addRenderableWidget(control("DOWN: " + shortName(down), 1, 0, false,
+        addRenderableWidget(control("DOWN: " + downLabel, 1, 0, false,
                 button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, 1)));
         addRenderableWidget(control("Custom DOWN OGG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "chime_down")));
@@ -376,7 +380,9 @@ final class ElevatorMediaSettingsScreen extends Screen {
         String error = ElevatorMediaStore.previewChime(liftId, up);
         applyFailed = error != null;
         statusMessage = error == null
-                ? (up ? "Playing selected UP chime." : "Playing selected DOWN chime.")
+                ? (ElevatorMediaStore.get(liftId, up ? "chime_up" : "chime_down") == null
+                        ? "Playing the original JCM chime."
+                        : (up ? "Playing selected UP chime." : "Playing selected DOWN chime."))
                 : error;
     }
 
@@ -405,7 +411,8 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void cycleChime(String key, String current, List<String> sounds, int step) {
-        int index = sounds.indexOf(current);
+        // An unset sound belongs to JCM, not the first YTE entry.
+        int index = ElevatorMediaStore.get(liftId, key) == null ? -1 : sounds.indexOf(current);
         if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
         reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
