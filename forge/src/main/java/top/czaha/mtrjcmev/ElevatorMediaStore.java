@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.server.packs.repository.PackRepository;
 
 import javax.imageio.ImageIO;
@@ -22,6 +25,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Stream;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -128,7 +134,7 @@ public final class ElevatorMediaStore {
             writeConfig(gameDir());
             refreshRuntime(liftId);
             lastError = null;
-        } catch (IOException exception) {
+        } catch (IOException | RuntimeException exception) {
             restore(liftId, before);
             lastError = "Could not save settings: " + exception.getMessage();
         }
@@ -170,25 +176,47 @@ public final class ElevatorMediaStore {
                 default -> { return "Unknown media type."; }
             }
             Files.createDirectories(output.getParent());
-            if (key.equals("arrow_up") || key.equals("arrow_down")) {
-                importArrow(selected, output);
-            } else {
-                atomicCopy(selected, output);
+            // Preserve the previously imported file until the config is committed.
+            // Failed imports must not replace a working resource with bad media.
+            Path backup = null;
+            if (Files.isRegularFile(output)) {
+                backup = Files.createTempFile(output.getParent(), ".mtr_jcm_ev-backup-", ".tmp");
+                Files.copy(output, backup, StandardCopyOption.REPLACE_EXISTING);
             }
-            Map<String, String> before = new LinkedHashMap<>(DATA.getOrDefault(liftId, Map.of()));
-            Map<String, String> after = new LinkedHashMap<>(before);
-            after.put(key, resourceId);
-            after.put("media_revision", nextRevision(before));
-            DATA.put(liftId, after);
+            boolean committed = false;
             try {
-                writeConfig(gameDir);
-                refreshRuntime(liftId);
-                lastError = null;
-                return null;
-            } catch (IOException exception) {
-                restore(liftId, before);
-                lastError = "Could not write media configuration: " + exception.getMessage();
-                return lastError;
+                if (key.equals("arrow_up") || key.equals("arrow_down")) {
+                    importArrow(selected, output);
+                } else {
+                    atomicCopy(selected, output);
+                }
+                Map<String, String> before = new LinkedHashMap<>(DATA.getOrDefault(liftId, Map.of()));
+                Map<String, String> after = new LinkedHashMap<>(before);
+                after.put(key, resourceId);
+                after.put("media_revision", nextRevision(before));
+                DATA.put(liftId, after);
+                try {
+                    writeConfig(gameDir);
+                    refreshRuntime(liftId);
+                    committed = true;
+                    lastError = null;
+                    return null;
+                } catch (IOException | RuntimeException exception) {
+                    restore(liftId, before);
+                    lastError = "Could not write media configuration: " + exception.getMessage();
+                    return lastError;
+                }
+            } finally {
+                if (!committed) {
+                    // Best-effort rollback, including the first-ever import.
+                    try {
+                        if (backup == null) Files.deleteIfExists(output);
+                        else Files.copy(backup, output, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException rollbackError) {
+                        lastError = "Import failed; media rollback also failed: " + rollbackError.getMessage();
+                    }
+                }
+                if (backup != null) Files.deleteIfExists(backup);
             }
         } catch (IOException | RuntimeException exception) {
             lastError = "Could not import file: " + exception.getMessage();
@@ -282,6 +310,9 @@ public final class ElevatorMediaStore {
                 String liftId = entry.getKey();
                 if (!validLiftId(liftId) || entry.getValue() == null) continue;
                 Map<String, String> values = new LinkedHashMap<>(entry.getValue());
+                // Corrupt or hand-edited JSON can contain null map entries.
+                values.entrySet().removeIf(value -> value.getKey() == null
+                        || value.getValue() == null || value.getValue().isBlank());
                 migrateLegacyValue(values, "up", "arrow_up");
                 migrateLegacyValue(values, "down", "arrow_down");
                 migrateLegacyValue(values, "chime", "chime_up");
@@ -321,12 +352,31 @@ public final class ElevatorMediaStore {
         atomicWrite(pack.resolve("pack.mcmeta"),
                 "{\"pack\":{\"pack_format\":15,\"description\":\"MTR JCM Elevator Custom media\"}}");
         Map<String, Object> sounds = new LinkedHashMap<>();
+        Set<String> expectedFonts = new HashSet<>();
         for (Map.Entry<String, Map<String, String>> entry : DATA.entrySet()) {
             String liftId = entry.getKey();
             if (!validLiftId(liftId)) continue;
             writeFontDefinition(pack, liftId, entry.getValue());
+            if (entry.getValue().containsKey("floor_font")
+                    || entry.getValue().containsKey("font_custom")) {
+                expectedFonts.add("lift_" + liftId + ".json");
+            }
             addSound(sounds, liftId, entry.getValue(), "chime_up", "up");
             addSound(sounds, liftId, entry.getValue(), "chime_down", "down");
+        }
+        // Remove only our own generated per-lift font descriptors. Deleted
+        // settings otherwise left old font JSONs active forever in the pack.
+        Path fontFolder = pack.resolve("assets/mtr_jcm_ev/font");
+        if (Files.isDirectory(fontFolder)) {
+            try (Stream<Path> files = Files.list(fontFolder)) {
+                for (Path path : files.toList()) {
+                    String name = path.getFileName().toString();
+                    if (Files.isRegularFile(path) && name.matches("lift_[a-zA-Z0-9_-]{1,64}\\.json")
+                            && !expectedFonts.contains(name)) {
+                        Files.deleteIfExists(path);
+                    }
+                }
+            }
         }
         atomicWrite(pack.resolve("assets/mtr_jcm_ev/sounds.json"), GSON.toJson(sounds));
         // Save the authoritative configuration last so failed pack writes do not commit settings.
@@ -428,6 +478,26 @@ public final class ElevatorMediaStore {
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    /**
+     * Preview the exact SoundEvent selected in the UI. This also identifies
+     * missing YTE sounds and generated resource packs that are not yet loaded.
+     */
+    public static synchronized String previewChime(String liftId, boolean up) {
+        load();
+        String key = up ? "chime_up" : "chime_down";
+        String fallback = up ? "yte:otis_series_3_lantern_1_up" : "yte:otis_series_3_lantern_1_down";
+        String id = DATA.getOrDefault(liftId, Map.of()).getOrDefault(key, fallback);
+        ResourceLocation soundId = ResourceLocation.tryParse(id);
+        if (soundId == null) return "Invalid sound event: " + id;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.getSoundManager().getSoundEvent(soundId) == null) {
+            return "Sound not loaded: " + id + " (check YTE or Apply media pack / reload)";
+        }
+        minecraft.getSoundManager().play(
+                SimpleSoundInstance.forUI(SoundEvent.createVariableRangeEvent(soundId), 1f));
+        return null;
     }
 
     public static String reloadMediaPack() {

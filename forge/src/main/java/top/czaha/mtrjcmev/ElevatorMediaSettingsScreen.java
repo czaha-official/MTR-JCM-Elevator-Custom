@@ -100,7 +100,8 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
         if (tab == 0) addArrowTab();
         else if (tab == 1) addNumberTab();
-        else addChimeTab();
+        else if (tab == 2) addChimeTab();
+        else addChimePreviewTab();
 
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
                 .bounds(Math.max(0, width / 2 - 50), Math.max(0, height - 24),
@@ -194,7 +195,9 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> clear("font_custom")));
         addRenderableWidget(control("Floor number: " + (enabled ? "ON" : "OFF"), 0, 54, true,
                 button -> {
-                    ElevatorMediaStore.set(liftId, "floor_enabled", Boolean.toString(!enabled));
+                    // ON is the vanilla default. Clearing OFF instead of
+                    // storing an explicit true avoids needless MTR display overrides.
+                    ElevatorMediaStore.set(liftId, "floor_enabled", enabled ? "false" : null);
                     reopen(1);
                 }));
         addRenderableWidget(control("Apply media pack / reload", 0, 82, true,
@@ -220,8 +223,30 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> ElevatorMediaStore.choose(liftId, "chime_down")));
         addRenderableWidget(control("Reset DOWN to YTE", 1, 72, false,
                 button -> setDefaultChime("chime_down", DEFAULT_DOWN_CHIME)));
-        addRenderableWidget(control("Apply media pack / reload", 0, 97, true,
+        addRenderableWidget(control("Apply media pack", 0, 97, false,
                 button -> applyPack()));
+        addRenderableWidget(control("Test selected sounds", 1, 97, false,
+                button -> reopen(3)));
+    }
+
+    /** A compact preview page is available at every GUI scale. */
+    private void addChimePreviewTab() {
+        addRenderableWidget(control("Test selected UP", 0, 0, true,
+                button -> previewChime(true)));
+        addRenderableWidget(control("Test selected DOWN", 0, 25, true,
+                button -> previewChime(false)));
+        addRenderableWidget(control("Apply media pack / reload", 0, 52, true,
+                button -> applyPack()));
+        addRenderableWidget(control("Back to Chimes", 0, 78, true,
+                button -> reopen(2)));
+    }
+
+    private void previewChime(boolean up) {
+        String error = ElevatorMediaStore.previewChime(liftId, up);
+        applyFailed = error != null;
+        statusMessage = error == null
+                ? (up ? "Playing selected UP chime." : "Playing selected DOWN chime.")
+                : error;
     }
 
     private void applyPack() {
