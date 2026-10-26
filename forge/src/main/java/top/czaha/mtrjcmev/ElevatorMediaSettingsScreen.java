@@ -257,8 +257,22 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> previewChime(false)));
         addRenderableWidget(control("Apply media pack / reload", 0, 52, true,
                 button -> applyPack()));
-        addRenderableWidget(control("Back to Chimes", 0, 78, true,
-                button -> reopen(2)));
+        String timing = valueOrDefault("chime_trigger", "arrival");
+        String label = switch (timing) {
+            case "deceleration" -> "Slowdown";
+            case "door_open" -> "Door opens";
+            default -> "Arrival (JCM)";
+        };
+        addRenderableWidget(control("Chime timing: " + label, 0, 78, true,
+                button -> {
+                    String next = switch (timing) {
+                        case "deceleration" -> "door_open";
+                        case "door_open" -> null;
+                        default -> "deceleration";
+                    };
+                    ElevatorMediaStore.set(liftId, "chime_trigger", next);
+                    reopen(3);
+                }));
     }
 
     private void previewChime(boolean up) {
