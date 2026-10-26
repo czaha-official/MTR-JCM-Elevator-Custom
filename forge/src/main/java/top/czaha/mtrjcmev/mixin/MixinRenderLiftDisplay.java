@@ -46,6 +46,7 @@ import top.czaha.mtrjcmev.LiftMediaRuntime;
 @Mixin(value = RenderLifts.class, priority = 2000, remap = false)
 public abstract class MixinRenderLiftDisplay {
     private static final int DISPLAY_COLOR = 0xFFFF0000;
+    private static final Identifier MTR_ARROW = new Identifier(Init.MOD_ID, "textures/block/sign/lift_arrow.png");
     private static final Logger LOGGER = LogManager.getLogger("MTR-JCM-Elevator-Custom");
     private static boolean loggedScriptOverlay;
 
@@ -119,8 +120,26 @@ public abstract class MixinRenderLiftDisplay {
                 graphicsHolder.pop();
             });
         }
-        mtrJcmEv$drawArrow(matrices, media, direction, width);
+        if (media.hasArrowSettings()) {
+            mtrJcmEv$drawArrow(matrices, media, direction, width);
+        } else {
+            mtrJcmEv$drawVanillaArrow(matrices, direction, width);
+        }
         ci.cancel();
+    }
+
+    private static void mtrJcmEv$drawVanillaArrow(StoredMatrixTransformations matrices,
+                                                  LiftDirection direction, float width) {
+        if (direction == LiftDirection.NONE) return;
+        MainRenderer.scheduleRender(MTR_ARROW, false, QueuedRenderLayer.LIGHT_TRANSLUCENT,
+                (graphicsHolder, offset) -> {
+                    matrices.transform(graphicsHolder, offset);
+                    IDrawing.drawTexture(graphicsHolder, -width / 6, 0, width / 3, width / 3,
+                            0, direction == LiftDirection.UP ? 0 : 1, 1,
+                            direction == LiftDirection.UP ? 1 : 0, Direction.UP,
+                            DISPLAY_COLOR, GraphicsHolder.getDefaultLight());
+                    graphicsHolder.pop();
+                });
     }
 
     private static void mtrJcmEv$drawArrow(StoredMatrixTransformations matrices, LiftMediaRuntime media,
