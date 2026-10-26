@@ -70,7 +70,7 @@ public abstract class MixinJcmArrivalChime {
             history = new LiftTravelState(floorY);
             MTR_JCM_EV_TRAVEL.put(liftId, history);
         }
-        history.update(currentDirection, floorY);
+        history.update(currentDirection, floorY, lift.hasCoolDown());
         history.markSeen(++MTR_JCM_EV_CALLS);
 
         // Very lightweight pruning when lifts have been removed/unloaded.
