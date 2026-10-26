@@ -16,11 +16,14 @@ public final class LiftTravelState {
         this.lastFloorY = firstFloorY;
     }
 
-    public void update(LiftDirection now, long currentFloorY) {
-        if (now == LiftDirection.UP || now == LiftDirection.DOWN) {
-            lastDirection = now;
-        } else if (currentFloorY != lastFloorY) {
+    public void update(LiftDirection now, long currentFloorY, boolean stopping) {
+        // The next queued instruction can already point in the opposite
+        // direction while doors are opening at an intermediate stop.
+        // Prefer the most recent actual floor movement over that next leg.
+        if (currentFloorY != lastFloorY) {
             lastDirection = currentFloorY > lastFloorY ? LiftDirection.UP : LiftDirection.DOWN;
+        } else if (!stopping && (now == LiftDirection.UP || now == LiftDirection.DOWN)) {
+            lastDirection = now;
         }
         lastFloorY = currentFloorY;
     }
