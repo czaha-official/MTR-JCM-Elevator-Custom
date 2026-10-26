@@ -23,6 +23,8 @@ public final class LiftMediaRuntime {
     private static final String DEFAULT_DOWN_ARROW = "yte:block/otis_gen3_arrow_down";
 
     private final boolean hasVisualSettings;
+    private final boolean hasArrowSettings;
+    private final boolean scriptedOverlay;
     private final boolean floorEnabled;
     private final boolean customFont;
     private final Identifier upArrow;
@@ -34,10 +36,13 @@ public final class LiftMediaRuntime {
     private volatile FloorGlyph cachedFloor;
 
     public LiftMediaRuntime(String id, Map<String, String> settings) {
-        hasVisualSettings = settings.containsKey("arrow_up") || settings.containsKey("arrow_down")
-                || settings.containsKey("yte_up") || settings.containsKey("yte_down")
-                || settings.containsKey("floor_font") || settings.containsKey("font_custom")
-                || "false".equals(settings.get("floor_enabled"));
+        hasArrowSettings = settings.containsKey("arrow_up") || settings.containsKey("arrow_down")
+                || settings.containsKey("yte_up") || settings.containsKey("yte_down");
+        hasVisualSettings = hasArrowSettings || settings.containsKey("floor_font")
+                || settings.containsKey("font_custom") || "false".equals(settings.get("floor_enabled"));
+        // JCM scripted lift models draw their own panels. Replacing them with
+        // an MTR-size display is unsafe; allow only explicit arrow overlay opt-in.
+        scriptedOverlay = "true".equals(settings.get("scripted_overlay"));
         floorEnabled = !"false".equals(settings.get("floor_enabled"));
         customFont = settings.containsKey("floor_font") || settings.containsKey("font_custom");
         upArrow = parseTexture(settings.getOrDefault("arrow_up",
@@ -52,6 +57,14 @@ public final class LiftMediaRuntime {
 
     public boolean hasVisualSettings() {
         return hasVisualSettings;
+    }
+
+    public boolean hasArrowSettings() {
+        return hasArrowSettings;
+    }
+
+    public boolean scriptedOverlay() {
+        return scriptedOverlay;
     }
 
     public boolean floorEnabled() {
