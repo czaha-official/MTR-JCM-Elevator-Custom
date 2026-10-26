@@ -52,6 +52,7 @@ public final class LiftTimedChimeController {
         State state = STATES.computeIfAbsent(id, key -> new State());
         if (direction == LiftDirection.UP || direction == LiftDirection.DOWN) state.direction = direction;
         if (state.direction == LiftDirection.NONE) return false;
+        if (state.played || state.pendingDoor) return true;
         state.pendingDoor = true;
         state.pendingSince = tickNumber;
         return true;
@@ -94,12 +95,22 @@ public final class LiftTimedChimeController {
             LiftDirection direction = lift.getDirection();
             if (direction != LiftDirection.NONE) state.direction = direction;
             if (media.chimeTiming() == LiftMediaRuntime.ChimeTiming.DECELERATION) {
-                sampleDeceleration(lift, media, state, level);
-            } else if (state.pendingDoor && lift.getDoorValue() >= 0.08f) {
-                if (tryPlay(level, lift, media, state.direction)) {
-                    state.played = true;
-                }
                 state.pendingDoor = false;
+                sampleDeceleration(lift, media, state, level);
+            } else {
+                // Reset the per-stop latch only after the lift has been seen
+                // moving on a new trip. Do not replay when doors oscillate.
+                if (direction != LiftDirection.NONE && !state.inMotion) {
+                    state.inMotion = true;
+                    state.played = false;
+                    state.pendingDoor = false;
+                } else if (direction == LiftDirection.NONE) {
+                    state.inMotion = false;
+                }
+                if (state.pendingDoor && lift.getDoorValue() >= 0.08f) {
+                    if (tryPlay(level, lift, media, state.direction)) state.played = true;
+                    state.pendingDoor = false;
+                }
             }
 
             // Expire an arrival that never opened its doors (e.g. unload or
@@ -115,29 +126,35 @@ public final class LiftTimedChimeController {
         }
     }
 
-    private static void sampleDeceleration(Lift lift, LiftMediaRuntime media, State state, ClientLevel world) {
-        double speed = readLiftSpeed(lift);
-        if (!Double.isFinite(speed)) return;
-        double absoluteSpeed = Math.abs(speed);
+    private static void sampleDeceleration(Lift lift, LiftMediaRuntime media, State state, ClientLevel level) {
         boolean moving = lift.getDirection() != LiftDirection.NONE;
-
         if (!moving) {
             state.inMotion = false;
+            state.readyForTrip = true;
             state.peakSpeed = 0;
             return;
         }
         if (!state.inMotion) {
             state.inMotion = true;
-            state.played = false;
             state.peakSpeed = 0;
+            // A JCM arrival callback may have happened before we first
+            // observed the train moving. Preserve its already-played latch
+            // until a stationary period has actually been seen.
+            if (state.readyForTrip) {
+                state.played = false;
+                state.readyForTrip = false;
+            }
         }
 
+        double speed = readLiftSpeed(lift);
+        if (!Double.isFinite(speed)) return; // fall back to JCM arrival
+        double absoluteSpeed = Math.abs(speed);
         if (absoluteSpeed > state.peakSpeed) state.peakSpeed = absoluteSpeed;
         if (!state.played
                 && state.peakSpeed >= MIN_MOVING_SPEED
                 && state.peakSpeed - absoluteSpeed >= MIN_DECELERATION_DROP
                 && absoluteSpeed <= state.peakSpeed * DECELERATION_RATIO) {
-            if (tryPlay(world, lift, media, state.direction)) state.played = true;
+            if (tryPlay(level, lift, media, state.direction)) state.played = true;
         }
     }
 
@@ -172,7 +189,11 @@ public final class LiftTimedChimeController {
         }
         if (speedField == null) return Double.NaN;
         try {
-            return speedField.getDouble(lift);
+            // MTR's generated LiftSchema can use float or double depending
+            // on the released core version. Field.getDouble() throws for
+            // a float field; Number supports both without losing precision.
+            Object value = speedField.get(lift);
+            return value instanceof Number ? ((Number) value).doubleValue() : Double.NaN;
         } catch (IllegalAccessException | IllegalArgumentException exception) {
             speedField = null;
             return Double.NaN;
@@ -217,6 +238,7 @@ public final class LiftTimedChimeController {
         private LiftDirection direction = LiftDirection.NONE;
         private boolean inMotion;
         private boolean played;
+        private boolean readyForTrip;
         private boolean pendingDoor;
         private double peakSpeed;
         private long pendingSince;
