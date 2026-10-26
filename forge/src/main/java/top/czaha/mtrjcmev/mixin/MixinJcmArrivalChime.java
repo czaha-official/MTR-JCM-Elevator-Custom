@@ -24,6 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.czaha.mtrjcmev.ElevatorMediaStore;
 import top.czaha.mtrjcmev.LiftMediaRuntime;
 import top.czaha.mtrjcmev.LiftTravelState;
+import top.czaha.mtrjcmev.LiftTimedChimeController;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -107,6 +108,19 @@ public abstract class MixinJcmArrivalChime {
             return;
         }
 
+        if (selected.chimeTiming() == LiftMediaRuntime.ChimeTiming.DECELERATION
+                && LiftTimedChimeController.alreadyPlayed(liftId)) {
+            // The chosen sound was already emitted while the lift slowed down.
+            cir.setReturnValue(false);
+            return;
+        }
+        if (selected.chimeTiming() == LiftMediaRuntime.ChimeTiming.DOOR_OPEN
+                && LiftTimedChimeController.deferUntilDoorOpens(liftId, history.getLastDirection())) {
+            // JCM has confirmed arrival. Defer our sound until the actual door movement.
+            cir.setReturnValue(false);
+            return;
+        }
+
         double x = trackPos.getX() + 0.5;
         double y = trackPos.getY() + 0.5;
         double z = trackPos.getZ() + 0.5;
@@ -115,6 +129,10 @@ public abstract class MixinJcmArrivalChime {
             level.playLocalSound(x, y, z, sound, SoundSource.BLOCKS, 1.0f, 1.0f, false);
             MTR_JCM_EV_LOGGER.info("Played lift {} configured {} sound {}",
                     liftId, history.getLastDirection(), sound.getLocation());
+        }
+        // Prevent the early-chime listener from replaying during the same stop.
+        if (selected.chimeTiming() == LiftMediaRuntime.ChimeTiming.DECELERATION) {
+            LiftTimedChimeController.markArrivalPlayed(liftId);
         }
         // Replaces JCM's default "minecraft:block.note_block.pling" for this lift.
         cir.setReturnValue(false);
