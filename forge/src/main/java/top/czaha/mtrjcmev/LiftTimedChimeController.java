@@ -60,12 +60,14 @@ public final class LiftTimedChimeController {
 
     /** Prevent JCM's normal arrival chime after this mod already sounded early. */
     public static boolean alreadyPlayed(long id) {
+        if (world != Minecraft.getInstance().level) return false;
         State state = STATES.get(id);
         return state != null && state.played;
     }
 
     /** Arrival fallback: a very short trip might not reach deceleration threshold. */
     public static void markArrivalPlayed(long id) {
+        checkWorld(Minecraft.getInstance().level);
         State state = STATES.computeIfAbsent(id, key -> new State());
         state.played = true;
         state.pendingDoor = false;
@@ -93,18 +95,22 @@ public final class LiftTimedChimeController {
             State state = STATES.computeIfAbsent(id, key -> new State());
             state.lastSeen = tickNumber;
             LiftDirection direction = lift.getDirection();
-            if (direction != LiftDirection.NONE) state.direction = direction;
+            if (direction != LiftDirection.NONE && !lift.hasCoolDown()) state.direction = direction;
             if (media.chimeTiming() == LiftMediaRuntime.ChimeTiming.DECELERATION) {
                 state.pendingDoor = false;
                 sampleDeceleration(lift, media, state, level);
             } else {
                 // Reset the per-stop latch only after the lift has been seen
                 // moving on a new trip. Do not replay when doors oscillate.
-                if (direction != LiftDirection.NONE && !state.inMotion) {
+                // A queued next destination can keep getDirection()!=NONE
+                // throughout the current stop. Cooldown, not direction alone,
+                // distinguishes an actual new trip from doors opening.
+                boolean travelling = direction != LiftDirection.NONE && !lift.hasCoolDown();
+                if (travelling && !state.inMotion) {
                     state.inMotion = true;
                     state.played = false;
                     state.pendingDoor = false;
-                } else if (direction == LiftDirection.NONE) {
+                } else if (!travelling) {
                     state.inMotion = false;
                 }
                 if (state.pendingDoor && lift.getDoorValue() >= 0.08f) {
@@ -127,7 +133,7 @@ public final class LiftTimedChimeController {
     }
 
     private static void sampleDeceleration(Lift lift, LiftMediaRuntime media, State state, ClientLevel level) {
-        boolean moving = lift.getDirection() != LiftDirection.NONE;
+        boolean moving = lift.getDirection() != LiftDirection.NONE && !lift.hasCoolDown();
         if (!moving) {
             state.inMotion = false;
             state.readyForTrip = true;
