@@ -1,7 +1,7 @@
 # MTR JCM Elevator Custom for MJX
 
 Minecraft **1.20.1 / Forge 47.x / Java 17** 用エレベーター表示・音声カスタマイズMODです。
-MTR 4.0.5、JCM（Joban Client Mod 2.x / MOD ID: jsblock）、YTE (Yunzhu Transit Extension) のインストールを想定しています。
+MTR 4.0.5、JCM（Joban Client Mod 2.3x / MOD ID: jsblock）、YTE (Yunzhu Transit Extension) のインストールを想定しています。
 
 ## 主な機能
 
