@@ -2,6 +2,7 @@ package top.czaha.mtrjcmev;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -103,7 +104,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
         else if (tab == 1) addNumberTab();
         else if (tab == 2) addChimeTab();
         else if (tab == 3) addChimePreviewTab();
-        else addScriptTab();
+        else if (tab == 4) addScriptTab();
+        else if (tab == 5) addArrowDownCompact();
+        else if (tab == 6) addChimeDownCompact();
+        else addChimePreviewTab();
 
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
                 .bounds(Math.max(0, width / 2 - 50), Math.max(0, height - 24),
@@ -154,11 +158,18 @@ final class ElevatorMediaSettingsScreen extends Screen {
         int buttonWidth = fullWidth ? panel : column == 0 ? half : panel - half - 6;
         int controlY = height < 200 ? yOffset * 4 / 5 : yOffset;
         int controlHeight = height < 200 ? 16 : 20;
-        return Button.builder(Component.literal(label), onPress)
+        String rendered = font.plainSubstrByWidth(label, Math.max(8, buttonWidth - 12));
+        Button button = Button.builder(Component.literal(rendered), onPress)
                 .bounds(x, contentTop() + controlY, buttonWidth, controlHeight).build();
+        if (!rendered.equals(label)) button.setTooltip(Tooltip.create(Component.literal(label)));
+        return button;
     }
 
     private void addArrowTab() {
+        if (height < 190) {
+            addArrowUpCompact();
+            return;
+        }
         String up = valueOrDefault("yte_up", DEFAULT_UP_ARROW);
         String down = valueOrDefault("yte_down", DEFAULT_DOWN_ARROW);
         String customUp = ElevatorMediaStore.get(liftId, "arrow_up");
@@ -185,6 +196,34 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> applyPack()));
     }
 
+    private void addArrowUpCompact() {
+        String up = valueOrDefault("yte_up", DEFAULT_UP_ARROW);
+        addRenderableWidget(control("Previous UP", 0, 0, false,
+                button -> cycleArrow("yte_up", up, -1)));
+        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+                button -> cycleArrow("yte_up", up, 1)));
+        addRenderableWidget(control("Custom UP PNG", 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
+        addRenderableWidget(control("Use YTE UP", 1, 24, false,
+                button -> clear("arrow_up")));
+        addRenderableWidget(control("DOWN settings", 0, 52, false, button -> reopen(5)));
+        addRenderableWidget(control("Apply pack", 1, 52, false, button -> applyPack()));
+    }
+
+    private void addArrowDownCompact() {
+        String down = valueOrDefault("yte_down", DEFAULT_DOWN_ARROW);
+        addRenderableWidget(control("Previous DOWN", 0, 0, false,
+                button -> cycleArrow("yte_down", down, -1)));
+        addRenderableWidget(control("DOWN: " + shortName(down), 1, 0, false,
+                button -> cycleArrow("yte_down", down, 1)));
+        addRenderableWidget(control("Custom DOWN PNG", 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
+        addRenderableWidget(control("Use YTE DOWN", 1, 24, false,
+                button -> clear("arrow_down")));
+        addRenderableWidget(control("UP settings", 0, 52, false, button -> reopen(0)));
+        addRenderableWidget(control("Apply pack", 1, 52, false, button -> applyPack()));
+    }
+
     private void addNumberTab() {
         String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
         String customFont = ElevatorMediaStore.get(liftId, "font_custom");
@@ -209,6 +248,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void addChimeTab() {
+        if (height < 190) {
+            addChimeUpCompact();
+            return;
+        }
         String up = valueOrDefault("chime_up", DEFAULT_UP_CHIME);
         String down = valueOrDefault("chime_down", DEFAULT_DOWN_CHIME);
         addRenderableWidget(control("Previous UP", 0, 0, false,
@@ -233,6 +276,34 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> reopen(3)));
     }
 
+    private void addChimeUpCompact() {
+        String up = valueOrDefault("chime_up", DEFAULT_UP_CHIME);
+        addRenderableWidget(control("Previous UP", 0, 0, false,
+                button -> cycleChime("chime_up", up, YTE_UP_CHIMES, -1)));
+        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+                button -> cycleChime("chime_up", up, YTE_UP_CHIMES, 1)));
+        addRenderableWidget(control("Custom UP OGG", 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "chime_up")));
+        addRenderableWidget(control("Use JCM UP", 1, 24, false,
+                button -> clear("chime_up")));
+        addRenderableWidget(control("DOWN settings", 0, 52, false, button -> reopen(6)));
+        addRenderableWidget(control("Test / timing", 1, 52, false, button -> reopen(3)));
+    }
+
+    private void addChimeDownCompact() {
+        String down = valueOrDefault("chime_down", DEFAULT_DOWN_CHIME);
+        addRenderableWidget(control("Previous DOWN", 0, 0, false,
+                button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, -1)));
+        addRenderableWidget(control("DOWN: " + shortName(down), 1, 0, false,
+                button -> cycleChime("chime_down", down, YTE_DOWN_CHIMES, 1)));
+        addRenderableWidget(control("Custom DOWN OGG", 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "chime_down")));
+        addRenderableWidget(control("Use JCM DOWN", 1, 24, false,
+                button -> clear("chime_down")));
+        addRenderableWidget(control("UP settings", 0, 52, false, button -> reopen(2)));
+        addRenderableWidget(control("Test / timing", 1, 52, false, button -> reopen(3)));
+    }
+
     private void addScriptTab() {
         boolean enabled = "true".equals(ElevatorMediaStore.get(liftId, "scripted_overlay"));
         addRenderableWidget(control("Scripted arrow overlay: " + (enabled ? "ON" : "OFF"), 0, 0, true,
@@ -255,15 +326,17 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> previewChime(true)));
         addRenderableWidget(control("Test selected DOWN", 0, 25, true,
                 button -> previewChime(false)));
-        addRenderableWidget(control("Apply media pack / reload", 0, 52, true,
-                button -> applyPack()));
+        if (height >= 160) {
+            addRenderableWidget(control("Apply media pack / reload", 0, 52, true,
+                    button -> applyPack()));
+        }
         String timing = valueOrDefault("chime_trigger", "arrival");
         String label = switch (timing) {
             case "deceleration" -> "Slowdown";
             case "door_open" -> "Door opens";
             default -> "Arrival (JCM)";
         };
-        addRenderableWidget(control("Chime timing: " + label, 0, 78, true,
+        if (height >= 160) addRenderableWidget(control("Chime timing: " + label, 0, 78, true,
                 button -> {
                     String next = switch (timing) {
                         case "deceleration" -> "door_open";
@@ -273,6 +346,28 @@ final class ElevatorMediaSettingsScreen extends Screen {
                     ElevatorMediaStore.set(liftId, "chime_trigger", next);
                     reopen(3);
                 }));
+        if (height < 160) {
+            addRenderableWidget(control("Timing: " + label, 0, 52, true, button -> {
+                String next = switch (timing) {
+                    case "deceleration" -> "door_open";
+                    case "door_open" -> null;
+                    default -> "deceleration";
+                };
+                ElevatorMediaStore.set(liftId, "chime_trigger", next);
+                reopen(3);
+            }));
+        }
+        if (height >= 250) {
+            addRenderableWidget(control("Use JCM UP", 0, 104, false,
+                    button -> clearChime("chime_up")));
+            addRenderableWidget(control("Use JCM DOWN", 1, 104, false,
+                    button -> clearChime("chime_down")));
+        }
+    }
+
+    private void clearChime(String key) {
+        ElevatorMediaStore.set(liftId, key, null);
+        reopen(3);
     }
 
     private void previewChime(boolean up) {
