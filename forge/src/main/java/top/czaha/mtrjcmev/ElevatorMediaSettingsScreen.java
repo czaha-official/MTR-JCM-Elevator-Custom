@@ -168,7 +168,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void addArrowTab() {
-        if (height < 190) {
+        if (height < 205) {
             addArrowUpCompact();
             return;
         }
@@ -250,7 +250,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void addChimeTab() {
-        if (height < 190) {
+        if (height < 205) {
             addChimeUpCompact();
             return;
         }
@@ -399,7 +399,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         // A selected PNG previously took priority over a new YTE selection.
         ElevatorMediaStore.set(liftId, "yte_up".equals(key) ? "arrow_up" : "arrow_down", null);
         ElevatorMediaStore.set(liftId, key, ARROW_TEXTURES.get(index));
-        reopen(height < 190 && "yte_down".equals(key) ? 5 : 0);
+        reopen(height < 205 && "yte_down".equals(key) ? 5 : 0);
     }
 
     private void cycleFont(String current) {
@@ -415,7 +415,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         int index = ElevatorMediaStore.get(liftId, key) == null ? -1 : sounds.indexOf(current);
         if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
-        reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
+        reopen(height < 205 && "chime_down".equals(key) ? 6 : 2);
     }
 
     /** Selecting YTE must actually write a YTE resource ID, not fall back
@@ -428,7 +428,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         if (ElevatorMediaStore.get(liftId, key) == null) {
             ElevatorMediaStore.set(liftId, key, defaultId);
         }
-        reopen(height < 190 && !up ? 5 : 0);
+        reopen(height < 205 && !up ? 5 : 0);
     }
 
     private void useYteFont() {
@@ -447,7 +447,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void setDefaultChime(String key, String sound) {
         ElevatorMediaStore.set(liftId, key, sound);
-        reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
+        reopen(height < 205 && "chime_down".equals(key) ? 6 : 2);
     }
 
     private void clear(String key) {
