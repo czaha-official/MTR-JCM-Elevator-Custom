@@ -91,17 +91,19 @@ final class ElevatorMediaSettingsScreen extends Screen {
     @Override
     protected void init() {
         int panel = panelWidth();
-        int tabWidth = (panel - 8) / 3;
+        int tabWidth = (panel - 12) / 4;
         int left = (width - panel) / 2;
         addRenderableWidget(tabButton(left, tabWidth, "Arrows", 0));
         addRenderableWidget(tabButton(left + tabWidth + 4, tabWidth, "Numbers", 1));
-        addRenderableWidget(tabButton(left + (tabWidth + 4) * 2, panel - (tabWidth + 4) * 2,
-                "Chimes", 2));
+        addRenderableWidget(tabButton(left + (tabWidth + 4) * 2, tabWidth, "Chimes", 2));
+        addRenderableWidget(tabButton(left + (tabWidth + 4) * 3,
+                panel - (tabWidth + 4) * 3, "Script", 4));
 
         if (tab == 0) addArrowTab();
         else if (tab == 1) addNumberTab();
         else if (tab == 2) addChimeTab();
-        else addChimePreviewTab();
+        else if (tab == 3) addChimePreviewTab();
+        else addScriptTab();
 
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
                 .bounds(Math.max(0, width / 2 - 50), Math.max(0, height - 24),
@@ -200,7 +202,9 @@ final class ElevatorMediaSettingsScreen extends Screen {
                     ElevatorMediaStore.set(liftId, "floor_enabled", enabled ? "false" : null);
                     reopen(1);
                 }));
-        addRenderableWidget(control("Apply media pack / reload", 0, 82, true,
+        addRenderableWidget(control("MTR default font", 0, 82, false,
+                button -> resetFont()));
+        addRenderableWidget(control("Apply media pack", 1, 82, false,
                 button -> applyPack()));
     }
 
@@ -227,6 +231,22 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 button -> applyPack()));
         addRenderableWidget(control("Test selected sounds", 1, 97, false,
                 button -> reopen(3)));
+    }
+
+    private void addScriptTab() {
+        boolean enabled = "true".equals(ElevatorMediaStore.get(liftId, "scripted_overlay"));
+        addRenderableWidget(control("Scripted arrow overlay: " + (enabled ? "ON" : "OFF"), 0, 0, true,
+                button -> {
+                    ElevatorMediaStore.set(liftId, "scripted_overlay", enabled ? null : "true");
+                    reopen(4);
+                }));
+        addRenderableWidget(control("Safe mode (recommended)", 0, 28, true,
+                button -> {
+                    ElevatorMediaStore.set(liftId, "scripted_overlay", null);
+                    reopen(4);
+                }));
+        addRenderableWidget(control("Apply media pack / reload", 0, 58, true,
+                button -> applyPack()));
     }
 
     /** A compact preview page is available at every GUI scale. */
@@ -259,6 +279,8 @@ final class ElevatorMediaSettingsScreen extends Screen {
         int index = ARROW_TEXTURES.indexOf(current);
         if (index < 0) index = step < 0 ? 0 : -1;
         index = Math.floorMod(index + step, ARROW_TEXTURES.size());
+        // A selected PNG previously took priority over a new YTE selection.
+        ElevatorMediaStore.set(liftId, "yte_up".equals(key) ? "arrow_up" : "arrow_down", null);
         ElevatorMediaStore.set(liftId, key, ARROW_TEXTURES.get(index));
         reopen(0);
     }
@@ -266,6 +288,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
     private void cycleFont(String current) {
         int index = YTE_FONTS.indexOf(current);
         if (index < 0) index = -1;
+        ElevatorMediaStore.set(liftId, "font_custom", null);
         ElevatorMediaStore.set(liftId, "floor_font", YTE_FONTS.get((index + 1) % YTE_FONTS.size()));
         reopen(1);
     }
@@ -275,6 +298,12 @@ final class ElevatorMediaSettingsScreen extends Screen {
         if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
         reopen(2);
+    }
+
+    private void resetFont() {
+        ElevatorMediaStore.set(liftId, "font_custom", null);
+        ElevatorMediaStore.set(liftId, "floor_font", null);
+        reopen(1);
     }
 
     private void setDefaultChime(String key, String sound) {
