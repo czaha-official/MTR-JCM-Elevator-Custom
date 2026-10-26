@@ -72,7 +72,7 @@ public abstract class MixinRenderLiftDisplay {
                 || !MtrScriptingResourceManager.lift.isScriptControlledRendering(lift.getStyle())) return;
 
         LiftDirection direction = lift.getDirection();
-        if (direction == LiftDirection.NONE) return;
+        if (direction == LiftDirection.NONE || !media.hasArrowFor(direction)) return;
         int sides = lift.getIsDoubleSided() ? 2 : 1;
         for (int i = 0; i < sides; i++) {
             StoredMatrixTransformations display = matrices.copy();
@@ -120,7 +120,9 @@ public abstract class MixinRenderLiftDisplay {
                 graphicsHolder.pop();
             });
         }
-        if (media.hasArrowSettings()) {
+        // Only a direction explicitly configured by the user gets a custom
+        // texture. Otherwise retain MTR's built-in animated UP/DOWN arrow.
+        if (media.hasArrowFor(direction)) {
             mtrJcmEv$drawArrow(matrices, media, direction, width);
         } else {
             mtrJcmEv$drawVanillaArrow(matrices, direction, width);
@@ -146,7 +148,10 @@ public abstract class MixinRenderLiftDisplay {
                                            LiftDirection direction, float width) {
         if (direction == LiftDirection.NONE) return;
         Identifier texture = direction == LiftDirection.UP ? media.upArrow() : media.downArrow();
-        if (texture == null) return;
+        if (texture == null) {
+            mtrJcmEv$drawVanillaArrow(matrices, direction, width);
+            return;
+        }
         MainRenderer.scheduleRender(texture, false, QueuedRenderLayer.LIGHT_TRANSLUCENT,
                 (graphicsHolder, offset) -> {
                     matrices.transform(graphicsHolder, offset);
