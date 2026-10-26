@@ -184,7 +184,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("Custom UP PNG" + customStatus(customUp), 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
         addRenderableWidget(control("Use YTE UP arrow", 1, 24, false,
-                button -> clear("arrow_up")));
+                button -> useYteArrow(true)));
 
         addRenderableWidget(control("Previous DOWN", 0, 52, false,
                 button -> cycleArrow("yte_down", down, -1)));
@@ -193,7 +193,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("Custom DOWN PNG" + customStatus(customDown), 0, 76, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
         addRenderableWidget(control("Use YTE DOWN arrow", 1, 76, false,
-                button -> clear("arrow_down")));
+                button -> useYteArrow(false)));
         addRenderableWidget(control("Apply media pack / reload", 0, 101, true,
                 button -> applyPack()));
     }
@@ -207,7 +207,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("Custom UP PNG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
         addRenderableWidget(control("Use YTE UP", 1, 24, false,
-                button -> clear("arrow_up")));
+                button -> useYteArrow(true)));
         addRenderableWidget(control("DOWN settings", 0, 52, false, button -> reopen(5)));
         addRenderableWidget(control("Apply pack", 1, 52, false, button -> applyPack()));
     }
@@ -221,7 +221,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("Custom DOWN PNG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
         addRenderableWidget(control("Use YTE DOWN", 1, 24, false,
-                button -> clear("arrow_down")));
+                button -> useYteArrow(false)));
         addRenderableWidget(control("UP settings", 0, 52, false, button -> reopen(0)));
         addRenderableWidget(control("Apply pack", 1, 52, false, button -> applyPack()));
     }
@@ -235,7 +235,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("Custom TTF/OTF" + customStatus(customFont), 0, 26, false,
                 button -> ElevatorMediaStore.choose(liftId, "font_custom")));
         addRenderableWidget(control("Use YTE font", 1, 26, false,
-                button -> clear("font_custom")));
+                button -> useYteFont()));
         addRenderableWidget(control("Floor number: " + (enabled ? "ON" : "OFF"), 0, 54, true,
                 button -> {
                     // ON is the vanilla default. Clearing OFF instead of
@@ -359,7 +359,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 reopen(3);
             }));
         }
-        if (height >= 250) {
+        if (height >= 230) {
             addRenderableWidget(control("Use JCM UP", 0, 104, false,
                     button -> clearChime("chime_up")));
             addRenderableWidget(control("Use JCM DOWN", 1, 104, false,
@@ -409,6 +409,27 @@ final class ElevatorMediaSettingsScreen extends Screen {
         if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
         reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
+    }
+
+    /** Selecting YTE must actually write a YTE resource ID, not fall back
+     * to vanilla MTR if there was never an explicit YTE selection. */
+    private void useYteArrow(boolean up) {
+        String key = up ? "yte_up" : "yte_down";
+        String oldCustom = up ? "arrow_up" : "arrow_down";
+        String defaultId = up ? DEFAULT_UP_ARROW : DEFAULT_DOWN_ARROW;
+        ElevatorMediaStore.set(liftId, oldCustom, null);
+        if (ElevatorMediaStore.get(liftId, key) == null) {
+            ElevatorMediaStore.set(liftId, key, defaultId);
+        }
+        reopen(height < 190 && !up ? 5 : 0);
+    }
+
+    private void useYteFont() {
+        ElevatorMediaStore.set(liftId, "font_custom", null);
+        if (ElevatorMediaStore.get(liftId, "floor_font") == null) {
+            ElevatorMediaStore.set(liftId, "floor_font", DEFAULT_FONT);
+        }
+        reopen(1);
     }
 
     private void resetFont() {
