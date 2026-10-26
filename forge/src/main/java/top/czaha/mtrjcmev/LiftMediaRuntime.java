@@ -30,6 +30,7 @@ public final class LiftMediaRuntime {
     private final Identifier upArrow;
     private final Identifier downArrow;
     private final Identifier floorFont;
+    private final ChimeTiming chimeTiming;
     private final boolean hasChimeSettings;
     private final SoundEvent upChime;
     private final SoundEvent downChime;
@@ -50,6 +51,7 @@ public final class LiftMediaRuntime {
         downArrow = parseTexture(settings.getOrDefault("arrow_down",
                 settings.getOrDefault("yte_down", DEFAULT_DOWN_ARROW)));
         floorFont = customFont ? new Identifier("mtr_jcm_ev", "lift_" + id) : null;
+        chimeTiming = ChimeTiming.fromSetting(settings.get("chime_trigger"));
         hasChimeSettings = settings.containsKey("chime_up") || settings.containsKey("chime_down");
         upChime = parseSound(settings.get("chime_up"));
         downChime = parseSound(settings.get("chime_down"));
@@ -81,6 +83,20 @@ public final class LiftMediaRuntime {
 
     public Identifier downArrow() {
         return downArrow;
+    }
+
+    public enum ChimeTiming {
+        ARRIVAL, DECELERATION, DOOR_OPEN;
+
+        public static ChimeTiming fromSetting(String value) {
+            if ("deceleration".equals(value)) return DECELERATION;
+            if ("door_open".equals(value)) return DOOR_OPEN;
+            return ARRIVAL;
+        }
+    }
+
+    public ChimeTiming chimeTiming() {
+        return chimeTiming;
     }
 
     public boolean hasChimeSettings() {
