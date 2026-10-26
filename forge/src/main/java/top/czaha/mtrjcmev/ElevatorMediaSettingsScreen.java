@@ -245,6 +245,10 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void addNumberTab() {
+        if (height < 165) {
+            addNumberCompact();
+            return;
+        }
         String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
         String customFont = ElevatorMediaStore.get(liftId, "font_custom");
         boolean enabled = !"false".equals(ElevatorMediaStore.get(liftId, "floor_enabled"));
@@ -264,6 +268,24 @@ final class ElevatorMediaSettingsScreen extends Screen {
         addRenderableWidget(control("MTR default font", 0, 82, false,
                 button -> resetFont()));
         addRenderableWidget(control("Apply media pack", 1, 82, false,
+                button -> applyPack()));
+    }
+
+    private void addNumberCompact() {
+        String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
+        boolean enabled = !"false".equals(ElevatorMediaStore.get(liftId, "floor_enabled"));
+        addRenderableWidget(control("YTE font: " + shortName(fontId), 0, 0, true,
+                button -> cycleFont(fontId)));
+        addRenderableWidget(control("Custom TTF/OTF", 0, 24, false,
+                button -> ElevatorMediaStore.choose(liftId, "font_custom")));
+        addRenderableWidget(control("MTR default font", 1, 24, false,
+                button -> resetFont()));
+        addRenderableWidget(control("Floor: " + (enabled ? "ON" : "OFF"), 0, 52, false,
+                button -> {
+                    ElevatorMediaStore.set(liftId, "floor_enabled", enabled ? "false" : null);
+                    reopen(1);
+                }));
+        addRenderableWidget(control("Apply pack", 1, 52, false,
                 button -> applyPack()));
     }
 
@@ -340,7 +362,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
                     ElevatorMediaStore.set(liftId, "scripted_overlay", null);
                     reopen(4);
                 }));
-        addRenderableWidget(control("Apply media pack / reload", 0, 58, true,
+        addRenderableWidget(control("Apply media pack / reload", 0, 52, true,
                 button -> applyPack()));
         if (height >= 165) {
             addRenderableWidget(control("Restore both MTR arrows", 0, 84, true,
