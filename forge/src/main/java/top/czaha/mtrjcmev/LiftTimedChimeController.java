@@ -162,7 +162,7 @@ public final class LiftTimedChimeController {
                         type = type.getSuperclass();
                     }
                 }
-            } catch (SecurityException | RuntimeException exception) {
+            } catch (RuntimeException exception) {
                 LOGGER.warn("Cannot access MTR lift speed; deceleration chime falls back to arrival: {}",
                         exception.toString());
             }
