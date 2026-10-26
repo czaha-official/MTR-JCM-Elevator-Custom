@@ -143,10 +143,12 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private Button tabButton(int x, int buttonWidth, String label, int targetTab) {
-        Button button = Button.builder(Component.literal(label), pressed ->
-                        minecraft.setScreen(new ElevatorMediaSettingsScreen(parent, liftId, targetTab)))
+        String shortened = font.plainSubstrByWidth(label, Math.max(8, buttonWidth - 8));
+        Button button = Button.builder(Component.literal(shortened), pressed ->
+                minecraft.setScreen(new ElevatorMediaSettingsScreen(parent, liftId, targetTab)))
                 .bounds(x, 32, buttonWidth, 20).build();
         button.active = targetTab != tab;
+        if (!shortened.equals(label)) button.setTooltip(Tooltip.create(Component.literal(label)));
         return button;
     }
 
@@ -391,7 +393,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         // A selected PNG previously took priority over a new YTE selection.
         ElevatorMediaStore.set(liftId, "yte_up".equals(key) ? "arrow_up" : "arrow_down", null);
         ElevatorMediaStore.set(liftId, key, ARROW_TEXTURES.get(index));
-        reopen(0);
+        reopen(height < 190 && "yte_down".equals(key) ? 5 : 0);
     }
 
     private void cycleFont(String current) {
@@ -406,7 +408,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
         int index = sounds.indexOf(current);
         if (index < 0) index = step < 0 ? 0 : -1;
         ElevatorMediaStore.set(liftId, key, sounds.get(Math.floorMod(index + step, sounds.size())));
-        reopen(2);
+        reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
     }
 
     private void resetFont() {
@@ -417,7 +419,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void setDefaultChime(String key, String sound) {
         ElevatorMediaStore.set(liftId, key, sound);
-        reopen(2);
+        reopen(height < 190 && "chime_down".equals(key) ? 6 : 2);
     }
 
     private void clear(String key) {
