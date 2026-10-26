@@ -31,10 +31,14 @@ final class MediaFileSelectionScreen extends Screen {
         pathField.setMaxLength(1024);
         pathField.setResponder(value -> errorMessage = null);
         addRenderableWidget(pathField);
+        int gap = 6;
+        int buttonWidth = Math.max(35, Math.min(95, (Math.max(90, width - 24) - gap) / 2));
+        int buttonRowLeft = centerX - buttonWidth - gap / 2;
+        int buttonY = Math.min(height - 26, height / 2 + 30);
         addRenderableWidget(Button.builder(Component.literal("Load"), button -> loadFile())
-                .bounds(centerX - 100, height / 2 + 30, 95, 20).build());
+                .bounds(buttonRowLeft, buttonY, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Cancel"), button -> onClose())
-                .bounds(centerX + 5, height / 2 + 30, 95, 20).build());
+                .bounds(buttonRowLeft + buttonWidth + gap, buttonY, buttonWidth, 20).build());
         setInitialFocus(pathField);
     }
 
@@ -48,7 +52,7 @@ final class MediaFileSelectionScreen extends Screen {
         if (errorMessage != null) {
             graphics.drawCenteredString(font,
                     Component.literal(font.plainSubstrByWidth(errorMessage, Math.max(20, width - 16))),
-                    width / 2, height / 2 + 65, 0xFF5555);
+                    width / 2, Math.min(height - 13, height / 2 + 65), 0xFF5555);
         }
     }
 
