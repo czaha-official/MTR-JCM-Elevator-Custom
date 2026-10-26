@@ -176,10 +176,14 @@ final class ElevatorMediaSettingsScreen extends Screen {
         String down = valueOrDefault("yte_down", DEFAULT_DOWN_ARROW);
         String customUp = ElevatorMediaStore.get(liftId, "arrow_up");
         String customDown = ElevatorMediaStore.get(liftId, "arrow_down");
+        String upLabel = customUp != null ? "Custom PNG" :
+                ElevatorMediaStore.get(liftId, "yte_up") == null ? "MTR default" : shortName(up);
+        String downLabel = customDown != null ? "Custom PNG" :
+                ElevatorMediaStore.get(liftId, "yte_down") == null ? "MTR default" : shortName(down);
 
         addRenderableWidget(control("Previous UP", 0, 0, false,
                 button -> cycleArrow("yte_up", up, -1)));
-        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+        addRenderableWidget(control("UP: " + upLabel, 1, 0, false,
                 button -> cycleArrow("yte_up", up, 1)));
         addRenderableWidget(control("Custom UP PNG" + customStatus(customUp), 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
@@ -188,7 +192,7 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
         addRenderableWidget(control("Previous DOWN", 0, 52, false,
                 button -> cycleArrow("yte_down", down, -1)));
-        addRenderableWidget(control("DOWN: " + shortName(down), 1, 52, false,
+        addRenderableWidget(control("DOWN: " + downLabel, 1, 52, false,
                 button -> cycleArrow("yte_down", down, 1)));
         addRenderableWidget(control("Custom DOWN PNG" + customStatus(customDown), 0, 76, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
@@ -200,9 +204,11 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void addArrowUpCompact() {
         String up = valueOrDefault("yte_up", DEFAULT_UP_ARROW);
+        String upLabel = ElevatorMediaStore.get(liftId, "arrow_up") != null ? "Custom PNG"
+                : ElevatorMediaStore.get(liftId, "yte_up") == null ? "MTR default" : shortName(up);
         addRenderableWidget(control("Previous UP", 0, 0, false,
                 button -> cycleArrow("yte_up", up, -1)));
-        addRenderableWidget(control("UP: " + shortName(up), 1, 0, false,
+        addRenderableWidget(control("UP: " + upLabel, 1, 0, false,
                 button -> cycleArrow("yte_up", up, 1)));
         addRenderableWidget(control("Custom UP PNG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_up")));
@@ -214,9 +220,11 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void addArrowDownCompact() {
         String down = valueOrDefault("yte_down", DEFAULT_DOWN_ARROW);
+        String downLabel = ElevatorMediaStore.get(liftId, "arrow_down") != null ? "Custom PNG"
+                : ElevatorMediaStore.get(liftId, "yte_down") == null ? "MTR default" : shortName(down);
         addRenderableWidget(control("Previous DOWN", 0, 0, false,
                 button -> cycleArrow("yte_down", down, -1)));
-        addRenderableWidget(control("DOWN: " + shortName(down), 1, 0, false,
+        addRenderableWidget(control("DOWN: " + downLabel, 1, 0, false,
                 button -> cycleArrow("yte_down", down, 1)));
         addRenderableWidget(control("Custom DOWN PNG", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "arrow_down")));
@@ -393,7 +401,8 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void cycleArrow(String key, String current, int step) {
-        int index = ARROW_TEXTURES.indexOf(current);
+        int index = ElevatorMediaStore.get(liftId, key) == null
+                ? -1 : ARROW_TEXTURES.indexOf(current);
         if (index < 0) index = step < 0 ? 0 : -1;
         index = Math.floorMod(index + step, ARROW_TEXTURES.size());
         // A selected PNG previously took priority over a new YTE selection.
