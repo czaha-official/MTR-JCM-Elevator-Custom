@@ -37,7 +37,7 @@ public final class LiftMediaRuntime {
         hasVisualSettings = settings.containsKey("arrow_up") || settings.containsKey("arrow_down")
                 || settings.containsKey("yte_up") || settings.containsKey("yte_down")
                 || settings.containsKey("floor_font") || settings.containsKey("font_custom")
-                || settings.containsKey("floor_enabled");
+                || "false".equals(settings.get("floor_enabled"));
         floorEnabled = !"false".equals(settings.get("floor_enabled"));
         customFont = settings.containsKey("floor_font") || settings.containsKey("font_custom");
         upArrow = parseTexture(settings.getOrDefault("arrow_up",
