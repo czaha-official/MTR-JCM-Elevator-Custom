@@ -251,8 +251,11 @@ final class ElevatorMediaSettingsScreen extends Screen {
         }
         String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
         String customFont = ElevatorMediaStore.get(liftId, "font_custom");
+        String fontLabel = customFont != null ? "Custom font"
+                : ElevatorMediaStore.get(liftId, "floor_font") == null
+                ? "MTR default" : shortName(fontId);
         boolean enabled = !"false".equals(ElevatorMediaStore.get(liftId, "floor_enabled"));
-        addRenderableWidget(control("YTE font: " + shortName(fontId), 0, 0, true,
+        addRenderableWidget(control("Font: " + fontLabel, 0, 0, true,
                 button -> cycleFont(fontId)));
         addRenderableWidget(control("Custom TTF/OTF" + customStatus(customFont), 0, 26, false,
                 button -> ElevatorMediaStore.choose(liftId, "font_custom")));
@@ -273,8 +276,11 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     private void addNumberCompact() {
         String fontId = valueOrDefault("floor_font", DEFAULT_FONT);
+        String fontLabel = ElevatorMediaStore.get(liftId, "font_custom") != null ? "Custom font"
+                : ElevatorMediaStore.get(liftId, "floor_font") == null
+                ? "MTR default" : shortName(fontId);
         boolean enabled = !"false".equals(ElevatorMediaStore.get(liftId, "floor_enabled"));
-        addRenderableWidget(control("YTE font: " + shortName(fontId), 0, 0, true,
+        addRenderableWidget(control("Font: " + fontLabel, 0, 0, true,
                 button -> cycleFont(fontId)));
         addRenderableWidget(control("Custom TTF/OTF", 0, 24, false,
                 button -> ElevatorMediaStore.choose(liftId, "font_custom")));
@@ -456,7 +462,8 @@ final class ElevatorMediaSettingsScreen extends Screen {
     }
 
     private void cycleFont(String current) {
-        int index = YTE_FONTS.indexOf(current);
+        int index = ElevatorMediaStore.get(liftId, "floor_font") == null
+                ? -1 : YTE_FONTS.indexOf(current);
         if (index < 0) index = -1;
         ElevatorMediaStore.set(liftId, "font_custom", null);
         ElevatorMediaStore.set(liftId, "floor_font", YTE_FONTS.get((index + 1) % YTE_FONTS.size()));
