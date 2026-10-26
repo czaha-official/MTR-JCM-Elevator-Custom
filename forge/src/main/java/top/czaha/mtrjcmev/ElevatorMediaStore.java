@@ -487,8 +487,10 @@ public final class ElevatorMediaStore {
     public static synchronized String previewChime(String liftId, boolean up) {
         load();
         String key = up ? "chime_up" : "chime_down";
-        String fallback = up ? "yte:otis_series_3_lantern_1_up" : "yte:otis_series_3_lantern_1_down";
-        String id = DATA.getOrDefault(liftId, Map.of()).getOrDefault(key, fallback);
+        String configured = DATA.getOrDefault(liftId, Map.of()).get(key);
+        // An unset direction uses JCM's normal note_block.pling (pitch 2),
+        // NOT the YTE sample shown in the old UI.
+        String id = configured == null ? "minecraft:block.note_block.pling" : configured;
         ResourceLocation soundId = ResourceLocation.tryParse(id);
         if (soundId == null) return "Invalid sound event: " + id;
         Minecraft minecraft = Minecraft.getInstance();
@@ -496,7 +498,8 @@ public final class ElevatorMediaStore {
             return "Sound not loaded: " + id + " (check YTE or Apply media pack / reload)";
         }
         minecraft.getSoundManager().play(
-                SimpleSoundInstance.forUI(SoundEvent.createVariableRangeEvent(soundId), 1f));
+                SimpleSoundInstance.forUI(SoundEvent.createVariableRangeEvent(soundId),
+                        configured == null ? 2f : 1f));
         return null;
     }
 
