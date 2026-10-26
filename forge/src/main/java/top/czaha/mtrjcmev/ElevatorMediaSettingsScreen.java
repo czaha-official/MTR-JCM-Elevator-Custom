@@ -91,6 +91,16 @@ final class ElevatorMediaSettingsScreen extends Screen {
 
     @Override
     protected void init() {
+        // Minecraft GUI scales can produce a screen too small for even three
+        // safe touch targets. Display a readable explanation rather than
+        // overlapping actionable buttons.
+        if (width < 160 || height < 140) {
+            statusMessage = "Screen too small - reduce Minecraft GUI scale.";
+            addRenderableWidget(Button.builder(Component.literal("Back"), button -> onClose())
+                    .bounds(Math.max(0, width / 2 - 40), Math.max(0, height - 25),
+                            Math.min(80, Math.max(1, width)), 20).build());
+            return;
+        }
         int panel = panelWidth();
         int tabWidth = (panel - 12) / 4;
         int left = (width - panel) / 2;
@@ -332,6 +342,18 @@ final class ElevatorMediaSettingsScreen extends Screen {
                 }));
         addRenderableWidget(control("Apply media pack / reload", 0, 58, true,
                 button -> applyPack()));
+        if (height >= 165) {
+            addRenderableWidget(control("Restore both MTR arrows", 0, 84, true,
+                    button -> restoreVanillaArrows()));
+        }
+    }
+
+    private void restoreVanillaArrows() {
+        ElevatorMediaStore.set(liftId, "arrow_up", null);
+        ElevatorMediaStore.set(liftId, "arrow_down", null);
+        ElevatorMediaStore.set(liftId, "yte_up", null);
+        ElevatorMediaStore.set(liftId, "yte_down", null);
+        reopen(4);
     }
 
     /** A compact preview page is available at every GUI scale. */
