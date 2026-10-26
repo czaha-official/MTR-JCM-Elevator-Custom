@@ -24,6 +24,8 @@ public final class LiftMediaRuntime {
 
     private final boolean hasVisualSettings;
     private final boolean hasArrowSettings;
+    private final boolean configuredUpArrow;
+    private final boolean configuredDownArrow;
     private final boolean scriptedOverlay;
     private final boolean floorEnabled;
     private final boolean customFont;
@@ -37,8 +39,9 @@ public final class LiftMediaRuntime {
     private volatile FloorGlyph cachedFloor;
 
     public LiftMediaRuntime(String id, Map<String, String> settings) {
-        hasArrowSettings = settings.containsKey("arrow_up") || settings.containsKey("arrow_down")
-                || settings.containsKey("yte_up") || settings.containsKey("yte_down");
+        configuredUpArrow = settings.containsKey("arrow_up") || settings.containsKey("yte_up");
+        configuredDownArrow = settings.containsKey("arrow_down") || settings.containsKey("yte_down");
+        hasArrowSettings = configuredUpArrow || configuredDownArrow;
         hasVisualSettings = hasArrowSettings || settings.containsKey("floor_font")
                 || settings.containsKey("font_custom") || "false".equals(settings.get("floor_enabled"));
         // JCM scripted lift models draw their own panels. Replacing them with
@@ -63,6 +66,11 @@ public final class LiftMediaRuntime {
 
     public boolean hasArrowSettings() {
         return hasArrowSettings;
+    }
+
+    public boolean hasArrowFor(org.mtr.core.data.LiftDirection direction) {
+        return direction == org.mtr.core.data.LiftDirection.UP ? configuredUpArrow
+                : direction == org.mtr.core.data.LiftDirection.DOWN && configuredDownArrow;
     }
 
     public boolean scriptedOverlay() {
