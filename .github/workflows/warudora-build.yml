@@ -44,10 +44,16 @@ jobs:
                   "mtr_jcm_ev.mixins.json",
                   "top/czaha/mtrjcmev/LiftTravelState.class",
                   "top/czaha/mtrjcmev/LiftMediaRuntime.class",
+                  "top/czaha/mtrjcmev/LiftTimedChimeController.class",
+                  "top/czaha/mtrjcmev/ElevatorMediaSettingsScreen.class",
+                  "top/czaha/mtrjcmev/MediaFileSelectionScreen.class",
                   "top/czaha/mtrjcmev/mixin/MixinJcmArrivalChime.class",
                   "top/czaha/mtrjcmev/mixin/MixinRenderLiftDisplay.class",
               }
               assert required.issubset(entries), sorted(required - entries)
+              assert "top/czaha/mtrjcmev/LiftArrivalSoundController.class" not in entries, (
+                  "Unused legacy arrival listener unexpectedly packaged")
+              assert jar.testzip() is None, "Corrupted entry inside distributable JAR"
               mixins = json.loads(jar.read("mtr_jcm_ev.mixins.json"))
               assert {"MixinJcmArrivalChime", "MixinRenderLiftDisplay"}.issubset(mixins["client"])
               metadata = jar.read("META-INF/mods.toml").decode("utf-8")
